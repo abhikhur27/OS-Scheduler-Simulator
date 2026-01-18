@@ -1,0 +1,64 @@
+:root {
+    --bg: #f8f7f2;
+    --text: #3c413c;
+    --accent: #7a8d7a;
+    --border: #e0ddd5;
+    --white: #ffffff;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', serif;
+    margin: 0;
+    padding: 2rem;
+    line-height: 1.6;
+}
+
+.container { max-width: 900px; margin: 0 auto; }
+
+header { margin-bottom: 3rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+h1 { font-weight: 300; letter-spacing: -1px; margin-bottom: 0.5rem; }
+.subtitle { color: var(--accent); font-style: italic; }
+
+.input-section { background: var(--white); border: 1px solid var(--border); padding: 2rem; border-radius: 8px; }
+
+table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+th { text-align: left; font-weight: 600; border-bottom: 2px solid var(--bg); padding: 0.5rem; }
+td { padding: 0.5rem; border-bottom: 1px solid var(--bg); }
+
+input, select {
+    padding: 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.btn-primary { background: var(--accent); color: white; border: none; padding: 0.8rem 1.5rem; cursor: pointer; border-radius: 4px; }
+.btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 0.8rem 1.5rem; cursor: pointer; border-radius: 4px; }
+
+.gantt-container {
+    display: flex;
+    margin: 2rem 0;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+}
+
+.gantt-block {
+    min-width: 60px;
+    border: 1px solid var(--text);
+    padding: 1rem 0.5rem;
+    text-align: center;
+    background: var(--white);
+    position: relative;
+}
+
+.gantt-time { position: absolute; bottom: -25px; right: -5px; font-size: 0.75rem; color: var(--accent); }
+
+.stats-grid { display: flex; gap: 2rem; margin-top: 2rem; }
+.stat-card { background: var(--white); padding: 1.5rem; border: 1px solid var(--border); border-radius: 8px; flex: 1; }
+.label { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+.value { font-size: 2rem; font-weight: 300; }
+
+.explanation { margin-top: 2rem; padding: 1.5rem; background: #eeede6; border-left: 4px solid var(--accent); font-size: 0.95rem; }

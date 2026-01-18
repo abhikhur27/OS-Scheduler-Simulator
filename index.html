@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Scheduler / A Visual Guide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CPU Scheduling</h1>
+            <p class="subtitle">An exploration of process management and resource allocation.</p>
+        </header>
+
+        <section class="input-section">
+            <div class="table-container">
+                <table id="process-table">
+                    <thead>
+                        <tr>
+                            <th>Process ID</th>
+                            <th>Arrival Time</th>
+                            <th>Burst Time</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="process-body">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div class="controls">
+                <button onclick="addProcess()" class="btn-secondary">+ Add Process</button>
+                <div class="algo-select">
+                    <select id="algo-choice" onchange="toggleQuantum()">
+                        <option value="FCFS">First Come, First Served (FCFS)</option>
+                        <option value="SJF">Shortest Job First (Non-preemptive)</option>
+                        <option value="RR">Round Robin</option>
+                    </select>
+                    <input type="number" id="quantum" placeholder="Quantum" value="2" style="display:none;">
+                </div>
+                <button onclick="runSimulation()" class="btn-primary">Calculate Results</button>
+            </div>
+        </section>
+
+        <section id="results-section" style="display:none;">
+            <div class="divider"></div>
+            <h3>Gantt Chart</h3>
+            <div id="gantt-chart" class="gantt-container"></div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="label">Average Wait Time</span>
+                    <span id="avg-wait" class="value">-</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Avg Turnaround Time</span>
+                    <span id="avg-tat" class="value">-</span>
+                </div>
+            </div>
+
+            <div id="explanation-box" class="explanation">
+                </div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
