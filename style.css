@@ -1,64 +1,251 @@
 :root {
-    --bg: #f8f7f2;
-    --text: #3c413c;
-    --accent: #7a8d7a;
-    --border: #e0ddd5;
-    --white: #ffffff;
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #4b5563;
+  --border: #dbe5f0;
+  --accent: #0f766e;
+  --accent-soft: rgba(15, 118, 110, 0.1);
+  --danger: #b91c1c;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI', serif;
-    margin: 0;
-    padding: 2rem;
-    line-height: 1.6;
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 116, 144, 0.18), transparent 36%),
+    var(--bg);
 }
 
-.container { max-width: 900px; margin: 0 auto; }
-
-header { margin-bottom: 3rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
-h1 { font-weight: 300; letter-spacing: -1px; margin-bottom: 0.5rem; }
-.subtitle { color: var(--accent); font-style: italic; }
-
-.input-section { background: var(--white); border: 1px solid var(--border); padding: 2rem; border-radius: 8px; }
-
-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
-th { text-align: left; font-weight: 600; border-bottom: 2px solid var(--bg); padding: 0.5rem; }
-td { padding: 0.5rem; border-bottom: 1px solid var(--bg); }
-
-input, select {
-    padding: 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg);
-    color: var(--text);
+.topbar {
+  width: min(1100px, 92vw);
+  margin: 2rem auto 1rem;
 }
 
-.btn-primary { background: var(--accent); color: white; border: none; padding: 0.8rem 1.5rem; cursor: pointer; border-radius: 4px; }
-.btn-secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 0.8rem 1.5rem; cursor: pointer; border-radius: 4px; }
-
-.gantt-container {
-    display: flex;
-    margin: 2rem 0;
-    overflow-x: auto;
-    padding-bottom: 1rem;
+.back-link {
+  text-decoration: none;
+  color: var(--accent);
+  font-weight: 700;
 }
 
-.gantt-block {
-    min-width: 60px;
-    border: 1px solid var(--text);
-    padding: 1rem 0.5rem;
-    text-align: center;
-    background: var(--white);
-    position: relative;
+h1 {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
 }
 
-.gantt-time { position: absolute; bottom: -25px; right: -5px; font-size: 0.75rem; color: var(--accent); }
+.topbar p {
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+}
 
-.stats-grid { display: flex; gap: 2rem; margin-top: 2rem; }
-.stat-card { background: var(--white); padding: 1.5rem; border: 1px solid var(--border); border-radius: 8px; flex: 1; }
-.label { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-.value { font-size: 2rem; font-weight: 300; }
+.layout {
+  width: min(1100px, 92vw);
+  margin: 1rem auto 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 1rem;
+}
 
-.explanation { margin-top: 2rem; padding: 1.5rem; background: #eeede6; border-left: 4px solid var(--accent); font-size: 0.95rem; }
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.06);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #9cb8d8;
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 360px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.93rem;
+}
+
+th {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+input[type="number"],
+select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem;
+  background: #f9fbfd;
+}
+
+.controls {
+  margin-top: 0.8rem;
+  display: grid;
+  grid-template-columns: 1fr 150px auto;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.error {
+  color: var(--danger);
+  min-height: 1.2rem;
+  margin-top: 0.7rem;
+  font-size: 0.92rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.summary-grid article {
+  border: 1px solid var(--border);
+  background: #f7fbff;
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.summary-grid h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.summary-grid p {
+  margin: 0.2rem 0 0;
+  font-family: "Space Mono", monospace;
+  font-size: 1.2rem;
+}
+
+.subhead {
+  margin: 1rem 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+.gantt {
+  display: flex;
+  min-height: 84px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.gantt-segment {
+  min-width: 60px;
+  border-right: 1px solid rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.35rem;
+  position: relative;
+}
+
+.gantt-segment[data-id="IDLE"] {
+  background: #94a3b8;
+}
+
+.gantt-segment .pid {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.gantt-segment .times {
+  font-family: "Space Mono", monospace;
+  font-size: 0.72rem;
+  opacity: 0.95;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+}
+
+.note {
+  margin-top: 0.9rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 950px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,148 +1,443 @@
+const processBody = document.getElementById('process-body');
+const addProcessBtn = document.getElementById('add-process');
+const runButton = document.getElementById('run-sim');
+const algorithmSelect = document.getElementById('algorithm');
+const quantumWrap = document.getElementById('quantum-wrap');
+const quantumInput = document.getElementById('quantum');
+const errorText = document.getElementById('error-text');
+
+const avgWaitEl = document.getElementById('avg-wait');
+const avgTatEl = document.getElementById('avg-tat');
+const avgResponseEl = document.getElementById('avg-response');
+const metricsBody = document.getElementById('metrics-body');
+const ganttEl = document.getElementById('gantt');
+const noteEl = document.getElementById('algorithm-note');
+
+const algorithmNotes = {
+  FCFS: 'FCFS is simple and fair by arrival order, but long jobs can significantly delay short jobs.',
+  SJF: 'SJF minimizes average waiting in many workloads, but requires burst-time knowledge and can starve long jobs.',
+  SRTF: 'SRTF preempts running tasks when shorter work arrives, improving responsiveness for short tasks.',
+  RR: 'Round Robin shares CPU time with fixed quanta to improve interactivity at the cost of context-switch overhead.',
+};
+
+const colorPalette = ['#0f766e', '#0284c7', '#7c3aed', '#16a34a', '#ca8a04', '#e11d48', '#0891b2', '#4f46e5'];
+
 let processes = [
-    { id: 'P1', arrival: 0, burst: 5 },
-    { id: 'P2', arrival: 1, burst: 3 }
+  { id: 'P1', arrival: 0, burst: 6 },
+  { id: 'P2', arrival: 1, burst: 3 },
+  { id: 'P3', arrival: 2, burst: 8 },
 ];
 
-function addProcess() {
-    const id = `P${processes.length + 1}`;
-    processes.push({ id, arrival: 0, burst: 1 });
-    renderTable();
+function compareByArrivalThenId(a, b) {
+  if (a.arrival !== b.arrival) {
+    return a.arrival - b.arrival;
+  }
+  return a.id.localeCompare(b.id);
 }
 
-function renderTable() {
-    const body = document.getElementById('process-body');
-    body.innerHTML = processes.map((p, i) => `
-        <tr>
-            <td>${p.id}</td>
-            <td><input type="number" value="${p.arrival}" onchange="updateProcess(${i}, 'arrival', this.value)"></td>
-            <td><input type="number" value="${p.burst}" onchange="updateProcess(${i}, 'burst', this.value)"></td>
-            <td><button onclick="removeProcess(${i})">×</button></td>
-        </tr>
-    `).join('');
+function pushSegment(timeline, pid, start, end) {
+  if (end <= start) return;
+
+  const last = timeline[timeline.length - 1];
+  if (last && last.pid === pid && last.end === start) {
+    last.end = end;
+    return;
+  }
+
+  timeline.push({ pid, start, end });
 }
 
-function updateProcess(index, key, val) {
-    processes[index][key] = parseInt(val);
-}
+function renderProcessTable() {
+  processBody.innerHTML = '';
 
-function toggleQuantum() {
-    const algo = document.getElementById('algo-choice').value;
-    document.getElementById('quantum').style.display = (algo === 'RR') ? 'inline-block' : 'none';
-}
+  processes.forEach((process, index) => {
+    const row = document.createElement('tr');
 
-function runSimulation() {
-    const algo = document.getElementById('algo-choice').value;
-    let timeline = [];
-    let explainText = "";
-
-    if (algo === 'FCFS') {
-        timeline = calcFCFS();
-        explainText = "<strong>First Come, First Served:</strong> Processes are attended to in the exact order they arrive. It is simple but can lead to the 'Convoy Effect' where long processes delay shorter ones.";
-    } else if (algo === 'SJF') {
-        timeline = calcSJF();
-        explainText = "<strong>Shortest Job First:</strong> By choosing the smallest burst time available, we minimize the overall average waiting time. This is optimal but requires knowing the future!";
-    } else if (algo === 'RR') {
-        timeline = calcRR();
-        explainText = "<strong>Round Robin:</strong> Each process gets a small fixed slice of time (Quantum). This ensures responsiveness, making it ideal for interactive systems.";
-    }
-
-    renderGantt(timeline);
-    renderStats(timeline);
-    document.getElementById('explanation-box').innerHTML = explainText;
-    document.getElementById('results-section').style.display = 'block';
-}
-
-function calcFCFS() {
-    let time = 0;
-    let result = [];
-    let sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
-    
-    sorted.forEach(p => {
-        if (time < p.arrival) time = p.arrival;
-        let start = time;
-        time += p.burst;
-        result.push({ id: p.id, start, end: time, arrival: p.arrival });
+    const idCell = document.createElement('td');
+    const idInput = document.createElement('input');
+    idInput.type = 'text';
+    idInput.value = process.id;
+    idInput.maxLength = 6;
+    idInput.addEventListener('input', (event) => {
+      processes[index].id = event.target.value.trim().toUpperCase();
     });
-    return result;
+    idCell.appendChild(idInput);
+
+    const arrivalCell = document.createElement('td');
+    const arrivalInput = document.createElement('input');
+    arrivalInput.type = 'number';
+    arrivalInput.min = '0';
+    arrivalInput.step = '1';
+    arrivalInput.value = process.arrival;
+    arrivalInput.addEventListener('input', (event) => {
+      processes[index].arrival = Number.parseInt(event.target.value, 10);
+    });
+    arrivalCell.appendChild(arrivalInput);
+
+    const burstCell = document.createElement('td');
+    const burstInput = document.createElement('input');
+    burstInput.type = 'number';
+    burstInput.min = '1';
+    burstInput.step = '1';
+    burstInput.value = process.burst;
+    burstInput.addEventListener('input', (event) => {
+      processes[index].burst = Number.parseInt(event.target.value, 10);
+    });
+    burstCell.appendChild(burstInput);
+
+    const removeCell = document.createElement('td');
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.textContent = 'Remove';
+    removeButton.disabled = processes.length === 1;
+    removeButton.addEventListener('click', () => {
+      processes.splice(index, 1);
+      renderProcessTable();
+    });
+    removeCell.appendChild(removeButton);
+
+    row.append(idCell, arrivalCell, burstCell, removeCell);
+    processBody.appendChild(row);
+  });
 }
 
-function calcSJF() {
-    let time = 0;
-    let result = [];
-    let ready = [];
-    let pool = [...processes].sort((a, b) => a.arrival - b.arrival);
-    
-    while (pool.length > 0 || ready.length > 0) {
-        while (pool.length > 0 && pool[0].arrival <= time) {
-            ready.push(pool.shift());
-        }
-        if (ready.length === 0) { time = pool[0].arrival; continue; }
-        
-        ready.sort((a, b) => a.burst - b.burst);
-        let p = ready.shift();
-        let start = time;
-        time += p.burst;
-        result.push({ id: p.id, start, end: time, arrival: p.arrival });
-    }
-    return result;
+function getNextProcessId() {
+  const ids = processes
+    .map((process) => Number.parseInt(process.id.replace(/\D/g, ''), 10))
+    .filter((value) => Number.isFinite(value));
+
+  const maxId = ids.length ? Math.max(...ids) : processes.length;
+  return `P${maxId + 1}`;
 }
 
-function calcRR() {
-    let q = parseInt(document.getElementById('quantum').value);
-    let time = 0;
-    let result = [];
-    let queue = [];
-    let pool = [...processes].map(p => ({...p, remaining: p.burst})).sort((a, b) => a.arrival - b.arrival);
+function validateProcesses() {
+  if (!processes.length) {
+    return { ok: false, message: 'Add at least one process before running the simulation.' };
+  }
 
-    while (pool.length > 0 || queue.length > 0) {
-        while (pool.length > 0 && pool[0].arrival <= time) queue.push(pool.shift());
-        
-        if (queue.length === 0) { time = pool[0].arrival; continue; }
+  const seen = new Set();
+  const sanitized = processes.map((process, index) => ({
+    id: (process.id || `P${index + 1}`).trim().toUpperCase(),
+    arrival: Number(process.arrival),
+    burst: Number(process.burst),
+  }));
 
-        let p = queue.shift();
-        let slice = Math.min(p.remaining, q);
-        let start = time;
-        time += slice;
-        p.remaining -= slice;
-        
-        result.push({ id: p.id, start, end: time, arrival: p.arrival, isComplete: p.remaining === 0 });
-
-        while (pool.length > 0 && pool[0].arrival <= time) queue.push(pool.shift());
-        if (p.remaining > 0) queue.push(p);
+  for (const process of sanitized) {
+    if (!process.id) {
+      return { ok: false, message: 'Each process must have a non-empty ID.' };
     }
-    return result;
+    if (seen.has(process.id)) {
+      return { ok: false, message: `Duplicate process ID detected: ${process.id}.` };
+    }
+    seen.add(process.id);
+
+    if (!Number.isInteger(process.arrival) || process.arrival < 0) {
+      return { ok: false, message: `Arrival time for ${process.id} must be an integer >= 0.` };
+    }
+
+    if (!Number.isInteger(process.burst) || process.burst <= 0) {
+      return { ok: false, message: `Burst time for ${process.id} must be an integer > 0.` };
+    }
+  }
+
+  processes = sanitized;
+  renderProcessTable();
+
+  return { ok: true, processes: sanitized };
+}
+
+function buildMetrics(baseProcesses, completionTimes, firstStartTimes) {
+  const rows = baseProcesses.map((process) => {
+    const completion = completionTimes[process.id] ?? 0;
+    const turnaround = completion - process.arrival;
+    const waiting = turnaround - process.burst;
+    const response = (firstStartTimes[process.id] ?? process.arrival) - process.arrival;
+
+    return {
+      id: process.id,
+      completion,
+      turnaround,
+      waiting,
+      response,
+    };
+  });
+
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.waiting += row.waiting;
+      acc.turnaround += row.turnaround;
+      acc.response += row.response;
+      return acc;
+    },
+    { waiting: 0, turnaround: 0, response: 0 }
+  );
+
+  return {
+    rows,
+    averages: {
+      waiting: totals.waiting / rows.length,
+      turnaround: totals.turnaround / rows.length,
+      response: totals.response / rows.length,
+    },
+  };
+}
+
+function simulateFCFS(baseProcesses) {
+  const queue = [...baseProcesses].sort(compareByArrivalThenId);
+  const timeline = [];
+  const completionTimes = {};
+  const firstStartTimes = {};
+  let time = 0;
+
+  queue.forEach((process) => {
+    if (time < process.arrival) {
+      pushSegment(timeline, 'IDLE', time, process.arrival);
+      time = process.arrival;
+    }
+
+    firstStartTimes[process.id] = time;
+    const end = time + process.burst;
+    pushSegment(timeline, process.id, time, end);
+    completionTimes[process.id] = end;
+    time = end;
+  });
+
+  return { timeline, completionTimes, firstStartTimes };
+}
+
+function simulateSJF(baseProcesses) {
+  const pending = [...baseProcesses].sort(compareByArrivalThenId);
+  const ready = [];
+  const timeline = [];
+  const completionTimes = {};
+  const firstStartTimes = {};
+  let time = 0;
+
+  while (pending.length || ready.length) {
+    while (pending.length && pending[0].arrival <= time) {
+      ready.push(pending.shift());
+    }
+
+    if (!ready.length) {
+      const nextArrival = pending[0].arrival;
+      pushSegment(timeline, 'IDLE', time, nextArrival);
+      time = nextArrival;
+      continue;
+    }
+
+    ready.sort((a, b) => {
+      if (a.burst !== b.burst) return a.burst - b.burst;
+      return compareByArrivalThenId(a, b);
+    });
+
+    const process = ready.shift();
+    firstStartTimes[process.id] = time;
+
+    const end = time + process.burst;
+    pushSegment(timeline, process.id, time, end);
+    completionTimes[process.id] = end;
+    time = end;
+  }
+
+  return { timeline, completionTimes, firstStartTimes };
+}
+
+function simulateSRTF(baseProcesses) {
+  const pending = [...baseProcesses]
+    .map((process) => ({ ...process, remaining: process.burst }))
+    .sort(compareByArrivalThenId);
+
+  const ready = [];
+  const timeline = [];
+  const completionTimes = {};
+  const firstStartTimes = {};
+  let time = 0;
+
+  while (pending.length || ready.length) {
+    while (pending.length && pending[0].arrival <= time) {
+      ready.push(pending.shift());
+    }
+
+    if (!ready.length) {
+      const nextArrival = pending[0].arrival;
+      pushSegment(timeline, 'IDLE', time, nextArrival);
+      time = nextArrival;
+      continue;
+    }
+
+    ready.sort((a, b) => {
+      if (a.remaining !== b.remaining) return a.remaining - b.remaining;
+      return compareByArrivalThenId(a, b);
+    });
+
+    const current = ready[0];
+    if (firstStartTimes[current.id] === undefined) {
+      firstStartTimes[current.id] = time;
+    }
+
+    pushSegment(timeline, current.id, time, time + 1);
+    current.remaining -= 1;
+    time += 1;
+
+    if (current.remaining === 0) {
+      completionTimes[current.id] = time;
+      ready.shift();
+    }
+  }
+
+  return { timeline, completionTimes, firstStartTimes };
+}
+
+function simulateRR(baseProcesses, quantum) {
+  const pending = [...baseProcesses]
+    .map((process) => ({ ...process, remaining: process.burst }))
+    .sort(compareByArrivalThenId);
+
+  const queue = [];
+  const timeline = [];
+  const completionTimes = {};
+  const firstStartTimes = {};
+  let time = 0;
+
+  while (pending.length || queue.length) {
+    while (pending.length && pending[0].arrival <= time) {
+      queue.push(pending.shift());
+    }
+
+    if (!queue.length) {
+      const nextArrival = pending[0].arrival;
+      pushSegment(timeline, 'IDLE', time, nextArrival);
+      time = nextArrival;
+      continue;
+    }
+
+    const current = queue.shift();
+    if (firstStartTimes[current.id] === undefined) {
+      firstStartTimes[current.id] = time;
+    }
+
+    const runDuration = Math.min(quantum, current.remaining);
+    const endTime = time + runDuration;
+    pushSegment(timeline, current.id, time, endTime);
+
+    current.remaining -= runDuration;
+    time = endTime;
+
+    while (pending.length && pending[0].arrival <= time) {
+      queue.push(pending.shift());
+    }
+
+    if (current.remaining > 0) {
+      queue.push(current);
+    } else {
+      completionTimes[current.id] = time;
+    }
+  }
+
+  return { timeline, completionTimes, firstStartTimes };
+}
+
+function colorForProcess(pid, colorMap) {
+  if (pid === 'IDLE') return '#94a3b8';
+
+  if (!colorMap[pid]) {
+    const index = Object.keys(colorMap).length % colorPalette.length;
+    colorMap[pid] = colorPalette[index];
+  }
+
+  return colorMap[pid];
 }
 
 function renderGantt(timeline) {
-    const chart = document.getElementById('gantt-chart');
-    chart.innerHTML = timeline.map(block => `
-        <div class="gantt-block" style="flex-grow: ${block.end - block.start}">
-            ${block.id}
-            <span class="gantt-time">${block.end}</span>
+  if (!timeline.length) {
+    ganttEl.innerHTML = '<p class="empty">No timeline generated.</p>';
+    return;
+  }
+
+  const colorMap = {};
+  const html = timeline
+    .map((segment) => {
+      const duration = segment.end - segment.start;
+      const color = colorForProcess(segment.pid, colorMap);
+
+      return `
+        <div class="gantt-segment" data-id="${segment.pid}" style="flex-grow: ${duration}; background: ${color};">
+          <span class="pid">${segment.pid}</span>
+          <span class="times">${segment.start} -> ${segment.end}</span>
         </div>
-    `).join('');
+      `;
+    })
+    .join('');
+
+  ganttEl.innerHTML = html;
 }
 
-function renderStats(timeline) {
-    // For simplicity, we calculate Wait Time as (Start of last segment - Arrival) - (Sum of previous segments)
-    // A more robust way is tracking completion time for each unique ID.
-    const processIds = [...new Set(processes.map(p => p.id))];
-    let totalWait = 0;
-    let totalTAT = 0;
+function renderMetrics(metrics) {
+  metricsBody.innerHTML = metrics.rows
+    .map(
+      (row) => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.completion}</td>
+          <td>${row.turnaround}</td>
+          <td>${row.waiting}</td>
+          <td>${row.response}</td>
+        </tr>
+      `
+    )
+    .join('');
 
-    processIds.forEach(id => {
-        const segments = timeline.filter(t => t.id === id);
-        const completionTime = segments[segments.length - 1].end;
-        const arrival = processes.find(p => p.id === id).arrival;
-        const burst = processes.find(p => p.id === id).burst;
-        
-        totalTAT += (completionTime - arrival);
-        totalWait += (completionTime - arrival - burst);
-    });
-
-    document.getElementById('avg-wait').innerText = (totalWait / processIds.length).toFixed(2);
-    document.getElementById('avg-tat').innerText = (totalTAT / processIds.length).toFixed(2);
+  avgWaitEl.textContent = metrics.averages.waiting.toFixed(2);
+  avgTatEl.textContent = metrics.averages.turnaround.toFixed(2);
+  avgResponseEl.textContent = metrics.averages.response.toFixed(2);
 }
 
-// Init
-renderTable();
+function updateQuantumVisibility() {
+  const showQuantum = algorithmSelect.value === 'RR';
+  quantumWrap.classList.toggle('hidden', !showQuantum);
+}
+
+function runSimulation() {
+  errorText.textContent = '';
+
+  const validation = validateProcesses();
+  if (!validation.ok) {
+    errorText.textContent = validation.message;
+    return;
+  }
+
+  const selectedAlgorithm = algorithmSelect.value;
+  let result;
+
+  if (selectedAlgorithm === 'RR') {
+    const quantum = Number.parseInt(quantumInput.value, 10);
+    if (!Number.isInteger(quantum) || quantum <= 0) {
+      errorText.textContent = 'Round Robin requires a valid quantum (integer > 0).';
+      return;
+    }
+    result = simulateRR(validation.processes, quantum);
+  } else if (selectedAlgorithm === 'SJF') {
+    result = simulateSJF(validation.processes);
+  } else if (selectedAlgorithm === 'SRTF') {
+    result = simulateSRTF(validation.processes);
+  } else {
+    result = simulateFCFS(validation.processes);
+  }
+
+  const metrics = buildMetrics(validation.processes, result.completionTimes, result.firstStartTimes);
+  renderGantt(result.timeline);
+  renderMetrics(metrics);
+  noteEl.textContent = algorithmNotes[selectedAlgorithm];
+}
+
+addProcessBtn.addEventListener('click', () => {
+  processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
+  renderProcessTable();
+});
+
+algorithmSelect.addEventListener('change', updateQuantumVisibility);
+runButton.addEventListener('click', runSimulation);
+
+renderProcessTable();
+updateQuantumVisibility();
+runSimulation();

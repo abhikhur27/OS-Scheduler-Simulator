@@ -1,68 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CPU Scheduler / A Visual Guide</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPU Scheduling Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>CPU Scheduling</h1>
-            <p class="subtitle">An exploration of process management and resource allocation.</p>
-        </header>
+  <header class="topbar">
+    <a class="back-link" href="https://abhikhur27.github.io/" target="_blank" rel="noreferrer">Back to Portfolio</a>
+    <h1>CPU Scheduling Studio</h1>
+    <p>Analyze process scheduling behavior with deterministic timeline simulation and metrics.</p>
+  </header>
 
-        <section class="input-section">
-            <div class="table-container">
-                <table id="process-table">
-                    <thead>
-                        <tr>
-                            <th>Process ID</th>
-                            <th>Arrival Time</th>
-                            <th>Burst Time</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="process-body">
-                        </tbody>
-                </table>
-            </div>
-            
-            <div class="controls">
-                <button onclick="addProcess()" class="btn-secondary">+ Add Process</button>
-                <div class="algo-select">
-                    <select id="algo-choice" onchange="toggleQuantum()">
-                        <option value="FCFS">First Come, First Served (FCFS)</option>
-                        <option value="SJF">Shortest Job First (Non-preemptive)</option>
-                        <option value="RR">Round Robin</option>
-                    </select>
-                    <input type="number" id="quantum" placeholder="Quantum" value="2" style="display:none;">
-                </div>
-                <button onclick="runSimulation()" class="btn-primary">Calculate Results</button>
-            </div>
-        </section>
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Process Input</h2>
+        <button id="add-process" type="button">Add Process</button>
+      </div>
 
-        <section id="results-section" style="display:none;">
-            <div class="divider"></div>
-            <h3>Gantt Chart</h3>
-            <div id="gantt-chart" class="gantt-container"></div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="label">Average Wait Time</span>
-                    <span id="avg-wait" class="value">-</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Avg Turnaround Time</span>
-                    <span id="avg-tat" class="value">-</span>
-                </div>
-            </div>
+      <div class="table-wrap" role="region" aria-label="Editable process table">
+        <table>
+          <thead>
+            <tr>
+              <th>PID</th>
+              <th>Arrival</th>
+              <th>Burst</th>
+              <th aria-label="Remove row">Action</th>
+            </tr>
+          </thead>
+          <tbody id="process-body"></tbody>
+        </table>
+      </div>
 
-            <div id="explanation-box" class="explanation">
-                </div>
-        </section>
-    </div>
-    <script src="script.js"></script>
+      <div class="controls">
+        <label>
+          Algorithm
+          <select id="algorithm">
+            <option value="FCFS">First Come, First Served</option>
+            <option value="SJF">Shortest Job First (Non-preemptive)</option>
+            <option value="SRTF">Shortest Remaining Time First</option>
+            <option value="RR">Round Robin</option>
+          </select>
+        </label>
+
+        <label id="quantum-wrap" class="hidden">
+          Time Quantum
+          <input id="quantum" type="number" min="1" step="1" value="2">
+        </label>
+
+        <button id="run-sim" class="primary" type="button">Run Simulation</button>
+      </div>
+
+      <p id="error-text" class="error" role="alert" aria-live="polite"></p>
+    </section>
+
+    <section class="panel results-panel">
+      <div class="panel-head">
+        <h2>Timeline + Metrics</h2>
+      </div>
+
+      <div id="summary" class="summary-grid" aria-live="polite">
+        <article>
+          <h3>Avg Waiting Time</h3>
+          <p id="avg-wait">-</p>
+        </article>
+        <article>
+          <h3>Avg Turnaround Time</h3>
+          <p id="avg-tat">-</p>
+        </article>
+        <article>
+          <h3>Avg Response Time</h3>
+          <p id="avg-response">-</p>
+        </article>
+      </div>
+
+      <div>
+        <h3 class="subhead">Gantt Chart</h3>
+        <div id="gantt" class="gantt" aria-label="Scheduling timeline"></div>
+      </div>
+
+      <div>
+        <h3 class="subhead">Per-process results</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PID</th>
+                <th>Completion</th>
+                <th>Turnaround</th>
+                <th>Waiting</th>
+                <th>Response</th>
+              </tr>
+            </thead>
+            <tbody id="metrics-body">
+              <tr><td colspan="5" class="empty">Run a simulation to view metrics.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p id="algorithm-note" class="note"></p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
