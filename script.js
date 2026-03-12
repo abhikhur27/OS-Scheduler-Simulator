@@ -13,6 +13,7 @@ const avgTatEl = document.getElementById('avg-tat');
 const avgResponseEl = document.getElementById('avg-response');
 const cpuUtilEl = document.getElementById('cpu-util');
 const throughputEl = document.getElementById('throughput');
+const idleTimeEl = document.getElementById('idle-time');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -177,6 +178,11 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
     { waiting: 0, turnaround: 0, response: 0 }
   );
 
+  const idleTime = timeline.reduce((sum, segment) => {
+    if (segment.pid === 'IDLE') return sum + (segment.end - segment.start);
+    return sum;
+  }, 0);
+
   return {
     rows,
     averages: {
@@ -192,6 +198,7 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
         Math.max(1, timeline[timeline.length - 1]?.end || 1)) *
       100,
     throughput: rows.length / Math.max(1, timeline[timeline.length - 1]?.end || 1),
+    idleTime,
   };
 }
 
@@ -406,6 +413,7 @@ function renderMetrics(metrics) {
   avgResponseEl.textContent = metrics.averages.response.toFixed(2);
   cpuUtilEl.textContent = `${metrics.utilization.toFixed(1)}%`;
   throughputEl.textContent = `${metrics.throughput.toFixed(3)} proc/time`;
+  idleTimeEl.textContent = `${metrics.idleTime.toFixed(1)} time`;
 }
 
 function applyContextSwitchOverhead(timeline, overhead) {
@@ -527,6 +535,7 @@ function exportSimulationCsv() {
   rows.push(`Summary,AvgResponse,${lastSimulation.metrics.averages.response.toFixed(3)}`);
   rows.push(`Summary,CPUUtilizationPct,${lastSimulation.metrics.utilization.toFixed(3)}`);
   rows.push(`Summary,Throughput,${lastSimulation.metrics.throughput.toFixed(6)}`);
+  rows.push(`Summary,IdleTime,${lastSimulation.metrics.idleTime.toFixed(3)}`);
 
   rows.push('');
   rows.push('PerProcess,PID,Completion,Turnaround,Waiting,Response');
