@@ -53,6 +53,11 @@
           <input id="quantum" type="number" min="1" step="1" value="2">
         </label>
 
+        <label>
+          Context Switch Cost
+          <input id="context-switch" type="number" min="0" step="1" value="0">
+        </label>
+
         <button id="run-sim" class="primary" type="button">Run Simulation</button>
       </div>
 
@@ -76,6 +81,14 @@
         <article>
           <h3>Avg Response Time</h3>
           <p id="avg-response">-</p>
+        </article>
+        <article>
+          <h3>CPU Utilization</h3>
+          <p id="cpu-util">-</p>
+        </article>
+        <article>
+          <h3>Throughput</h3>
+          <p id="throughput">-</p>
         </article>
       </div>
 

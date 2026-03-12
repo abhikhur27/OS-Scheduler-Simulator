@@ -4,11 +4,14 @@ const runButton = document.getElementById('run-sim');
 const algorithmSelect = document.getElementById('algorithm');
 const quantumWrap = document.getElementById('quantum-wrap');
 const quantumInput = document.getElementById('quantum');
+const contextSwitchInput = document.getElementById('context-switch');
 const errorText = document.getElementById('error-text');
 
 const avgWaitEl = document.getElementById('avg-wait');
 const avgTatEl = document.getElementById('avg-tat');
 const avgResponseEl = document.getElementById('avg-response');
+const cpuUtilEl = document.getElementById('cpu-util');
+const throughputEl = document.getElementById('throughput');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -146,7 +149,7 @@ function validateProcesses() {
   return { ok: true, processes: sanitized };
 }
 
-function buildMetrics(baseProcesses, completionTimes, firstStartTimes) {
+function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline) {
   const rows = baseProcesses.map((process) => {
     const completion = completionTimes[process.id] ?? 0;
     const turnaround = completion - process.arrival;
@@ -179,6 +182,14 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes) {
       turnaround: totals.turnaround / rows.length,
       response: totals.response / rows.length,
     },
+    utilization:
+      (timeline.reduce((sum, segment) => {
+        if (segment.pid === 'IDLE' || segment.pid === 'CS') return sum;
+        return sum + (segment.end - segment.start);
+      }, 0) /
+        Math.max(1, timeline[timeline.length - 1]?.end || 1)) *
+      100,
+    throughput: rows.length / Math.max(1, timeline[timeline.length - 1]?.end || 1),
   };
 }
 
@@ -339,6 +350,7 @@ function simulateRR(baseProcesses, quantum) {
 
 function colorForProcess(pid, colorMap) {
   if (pid === 'IDLE') return '#94a3b8';
+  if (pid === 'CS') return '#f59e0b';
 
   if (!colorMap[pid]) {
     const index = Object.keys(colorMap).length % colorPalette.length;
@@ -390,6 +402,53 @@ function renderMetrics(metrics) {
   avgWaitEl.textContent = metrics.averages.waiting.toFixed(2);
   avgTatEl.textContent = metrics.averages.turnaround.toFixed(2);
   avgResponseEl.textContent = metrics.averages.response.toFixed(2);
+  cpuUtilEl.textContent = `${metrics.utilization.toFixed(1)}%`;
+  throughputEl.textContent = `${metrics.throughput.toFixed(3)} proc/time`;
+}
+
+function applyContextSwitchOverhead(timeline, overhead) {
+  if (!overhead) {
+    return timeline.map((segment) => ({ ...segment }));
+  }
+
+  const adjusted = [];
+  let cursor = timeline[0]?.start || 0;
+
+  timeline.forEach((segment, index) => {
+    const duration = segment.end - segment.start;
+    const start = cursor;
+    const end = cursor + duration;
+    pushSegment(adjusted, segment.pid, start, end);
+    cursor = end;
+
+    const next = timeline[index + 1];
+    if (!next) return;
+
+    const switchingProcesses =
+      segment.pid !== 'IDLE' && next.pid !== 'IDLE' && segment.pid !== next.pid;
+    if (switchingProcesses) {
+      pushSegment(adjusted, 'CS', cursor, cursor + overhead);
+      cursor += overhead;
+    }
+  });
+
+  return adjusted;
+}
+
+function deriveTimesFromTimeline(timeline, processIds) {
+  const completionTimes = {};
+  const firstStartTimes = {};
+  const validIds = new Set(processIds);
+
+  timeline.forEach((segment) => {
+    if (!validIds.has(segment.pid)) return;
+    if (firstStartTimes[segment.pid] === undefined) {
+      firstStartTimes[segment.pid] = segment.start;
+    }
+    completionTimes[segment.pid] = segment.end;
+  });
+
+  return { completionTimes, firstStartTimes };
 }
 
 function updateQuantumVisibility() {
@@ -407,6 +466,11 @@ function runSimulation() {
   }
 
   const selectedAlgorithm = algorithmSelect.value;
+  const contextSwitchCost = Number.parseInt(contextSwitchInput.value, 10);
+  if (!Number.isInteger(contextSwitchCost) || contextSwitchCost < 0) {
+    errorText.textContent = 'Context switch cost must be an integer >= 0.';
+    return;
+  }
   let result;
 
   if (selectedAlgorithm === 'RR') {
@@ -424,10 +488,20 @@ function runSimulation() {
     result = simulateFCFS(validation.processes);
   }
 
-  const metrics = buildMetrics(validation.processes, result.completionTimes, result.firstStartTimes);
-  renderGantt(result.timeline);
+  const timelineWithOverhead = applyContextSwitchOverhead(result.timeline, contextSwitchCost);
+  const derivedTimes = deriveTimesFromTimeline(
+    timelineWithOverhead,
+    validation.processes.map((process) => process.id)
+  );
+  const metrics = buildMetrics(
+    validation.processes,
+    derivedTimes.completionTimes,
+    derivedTimes.firstStartTimes,
+    timelineWithOverhead
+  );
+  renderGantt(timelineWithOverhead);
   renderMetrics(metrics);
-  noteEl.textContent = algorithmNotes[selectedAlgorithm];
+  noteEl.textContent = `${algorithmNotes[selectedAlgorithm]} Context switch cost applied: ${contextSwitchCost}.`;
 }
 
 addProcessBtn.addEventListener('click', () => {
