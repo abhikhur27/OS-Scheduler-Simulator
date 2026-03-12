@@ -1,6 +1,7 @@
 const processBody = document.getElementById('process-body');
 const addProcessBtn = document.getElementById('add-process');
 const runButton = document.getElementById('run-sim');
+const exportCsvButton = document.getElementById('export-csv');
 const algorithmSelect = document.getElementById('algorithm');
 const quantumWrap = document.getElementById('quantum-wrap');
 const quantumInput = document.getElementById('quantum');
@@ -30,6 +31,7 @@ let processes = [
   { id: 'P2', arrival: 1, burst: 3 },
   { id: 'P3', arrival: 2, burst: 8 },
 ];
+let lastSimulation = null;
 
 function compareByArrivalThenId(a, b) {
   if (a.arrival !== b.arrival) {
@@ -502,6 +504,50 @@ function runSimulation() {
   renderGantt(timelineWithOverhead);
   renderMetrics(metrics);
   noteEl.textContent = `${algorithmNotes[selectedAlgorithm]} Context switch cost applied: ${contextSwitchCost}.`;
+  lastSimulation = {
+    algorithm: selectedAlgorithm,
+    contextSwitchCost,
+    metrics,
+    timeline: timelineWithOverhead,
+  };
+}
+
+function exportSimulationCsv() {
+  if (!lastSimulation) {
+    errorText.textContent = 'Run a simulation before exporting.';
+    return;
+  }
+
+  const rows = [];
+  rows.push('Section,Metric,Value');
+  rows.push(`Summary,Algorithm,${lastSimulation.algorithm}`);
+  rows.push(`Summary,ContextSwitchCost,${lastSimulation.contextSwitchCost}`);
+  rows.push(`Summary,AvgWaiting,${lastSimulation.metrics.averages.waiting.toFixed(3)}`);
+  rows.push(`Summary,AvgTurnaround,${lastSimulation.metrics.averages.turnaround.toFixed(3)}`);
+  rows.push(`Summary,AvgResponse,${lastSimulation.metrics.averages.response.toFixed(3)}`);
+  rows.push(`Summary,CPUUtilizationPct,${lastSimulation.metrics.utilization.toFixed(3)}`);
+  rows.push(`Summary,Throughput,${lastSimulation.metrics.throughput.toFixed(6)}`);
+
+  rows.push('');
+  rows.push('PerProcess,PID,Completion,Turnaround,Waiting,Response');
+  lastSimulation.metrics.rows.forEach((row) => {
+    rows.push(`PerProcess,${row.id},${row.completion},${row.turnaround},${row.waiting},${row.response}`);
+  });
+
+  rows.push('');
+  rows.push('Timeline,PID,Start,End,Duration');
+  lastSimulation.timeline.forEach((segment) => {
+    rows.push(`Timeline,${segment.pid},${segment.start},${segment.end},${segment.end - segment.start}`);
+  });
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `cpu-scheduler-${lastSimulation.algorithm.toLowerCase()}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+  errorText.textContent = 'Exported simulation CSV.';
 }
 
 addProcessBtn.addEventListener('click', () => {
@@ -511,6 +557,7 @@ addProcessBtn.addEventListener('click', () => {
 
 algorithmSelect.addEventListener('change', updateQuantumVisibility);
 runButton.addEventListener('click', runSimulation);
+exportCsvButton.addEventListener('click', exportSimulationCsv);
 
 renderProcessTable();
 updateQuantumVisibility();
