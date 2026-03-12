@@ -65,6 +65,12 @@ h1 {
   margin-bottom: 0.7rem;
 }
 
+.button-row-inline {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 h2 {
   margin: 0;
   font-size: 1.1rem;

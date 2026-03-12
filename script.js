@@ -1,5 +1,6 @@
 const processBody = document.getElementById('process-body');
 const addProcessBtn = document.getElementById('add-process');
+const randomWorkloadBtn = document.getElementById('random-workload');
 const runButton = document.getElementById('run-sim');
 const exportCsvButton = document.getElementById('export-csv');
 const algorithmSelect = document.getElementById('algorithm');
@@ -559,6 +560,20 @@ function exportSimulationCsv() {
   errorText.textContent = 'Exported simulation CSV.';
 }
 
+function generateRandomWorkload() {
+  const processCount = 4 + Math.floor(Math.random() * 4);
+  processes = Array.from({ length: processCount }, (_, index) => ({
+    id: `P${index + 1}`,
+    arrival: Math.floor(Math.random() * 8),
+    burst: 1 + Math.floor(Math.random() * 9),
+  }));
+
+  processes.sort(compareByArrivalThenId);
+  renderProcessTable();
+  errorText.textContent = `Generated random workload (${processCount} processes).`;
+  runSimulation();
+}
+
 addProcessBtn.addEventListener('click', () => {
   processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
   renderProcessTable();
@@ -567,6 +582,7 @@ addProcessBtn.addEventListener('click', () => {
 algorithmSelect.addEventListener('change', updateQuantumVisibility);
 runButton.addEventListener('click', runSimulation);
 exportCsvButton.addEventListener('click', exportSimulationCsv);
+randomWorkloadBtn.addEventListener('click', generateRandomWorkload);
 
 renderProcessTable();
 updateQuantumVisibility();
