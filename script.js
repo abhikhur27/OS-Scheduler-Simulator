@@ -22,6 +22,9 @@ const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
+const exportWorkloadBtn = document.getElementById('export-workload');
+const importWorkloadBtn = document.getElementById('import-workload');
+const importWorkloadFile = document.getElementById('import-workload-file');
 
 const algorithmNotes = {
   FCFS: 'FCFS is simple and fair by arrival order, but long jobs can significantly delay short jobs.',
@@ -615,6 +618,50 @@ function loadPresetWorkload(type) {
   runSimulation();
 }
 
+function exportWorkload() {
+  const payload = {
+    algorithm: algorithmSelect.value,
+    quantum: quantumInput.value,
+    contextSwitchCost: contextSwitchInput.value,
+    processes,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'cpu-scheduler-workload.json';
+  anchor.click();
+  URL.revokeObjectURL(url);
+  errorText.textContent = 'Exported workload JSON.';
+}
+
+function importWorkload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || '{}'));
+      processes = Array.isArray(parsed.processes) ? parsed.processes : [];
+      algorithmSelect.value = parsed.algorithm || 'FCFS';
+      quantumInput.value = parsed.quantum || '2';
+      contextSwitchInput.value = parsed.contextSwitchCost || '0';
+      renderProcessTable();
+      updateQuantumVisibility();
+      runSimulation();
+      errorText.textContent = 'Imported workload JSON.';
+    } catch (error) {
+      errorText.textContent = 'Could not import that workload JSON.';
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
 addProcessBtn.addEventListener('click', () => {
   processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
   renderProcessTable();
@@ -626,6 +673,9 @@ exportCsvButton.addEventListener('click', exportSimulationCsv);
 randomWorkloadBtn.addEventListener('click', generateRandomWorkload);
 presetConvoyBtn.addEventListener('click', () => loadPresetWorkload('convoy'));
 presetInteractiveBtn.addEventListener('click', () => loadPresetWorkload('interactive'));
+exportWorkloadBtn.addEventListener('click', exportWorkload);
+importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
+importWorkloadFile.addEventListener('change', importWorkload);
 
 renderProcessTable();
 updateQuantumVisibility();

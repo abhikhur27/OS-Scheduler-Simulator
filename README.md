@@ -11,6 +11,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - Shortest Remaining Time First (SRTF, preemptive)
   - Round Robin (configurable quantum)
 - Timeline (Gantt chart) with idle segments included.
+- Workload import/export as JSON for reproducible comparisons.
 - Per-process metrics:
   - Completion time
   - Turnaround time
