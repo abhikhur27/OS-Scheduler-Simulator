@@ -15,9 +15,13 @@ const avgResponseEl = document.getElementById('avg-response');
 const cpuUtilEl = document.getElementById('cpu-util');
 const throughputEl = document.getElementById('throughput');
 const idleTimeEl = document.getElementById('idle-time');
+const longestWaitEl = document.getElementById('longest-wait');
+const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
+const presetConvoyBtn = document.getElementById('preset-convoy');
+const presetInteractiveBtn = document.getElementById('preset-interactive');
 
 const algorithmNotes = {
   FCFS: 'FCFS is simple and fair by arrival order, but long jobs can significantly delay short jobs.',
@@ -191,6 +195,7 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
       turnaround: totals.turnaround / rows.length,
       response: totals.response / rows.length,
     },
+    longestWait: Math.max(...rows.map((row) => row.waiting)),
     utilization:
       (timeline.reduce((sum, segment) => {
         if (segment.pid === 'IDLE' || segment.pid === 'CS') return sum;
@@ -200,6 +205,10 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
       100,
     throughput: rows.length / Math.max(1, timeline[timeline.length - 1]?.end || 1),
     idleTime,
+    contextSwitchTime: timeline.reduce((sum, segment) => {
+      if (segment.pid === 'CS') return sum + (segment.end - segment.start);
+      return sum;
+    }, 0),
   };
 }
 
@@ -415,6 +424,8 @@ function renderMetrics(metrics) {
   cpuUtilEl.textContent = `${metrics.utilization.toFixed(1)}%`;
   throughputEl.textContent = `${metrics.throughput.toFixed(3)} proc/time`;
   idleTimeEl.textContent = `${metrics.idleTime.toFixed(1)} time`;
+  longestWaitEl.textContent = `${metrics.longestWait.toFixed(1)} time`;
+  contextSwitchTimeEl.textContent = `${metrics.contextSwitchTime.toFixed(1)} time`;
 }
 
 function applyContextSwitchOverhead(timeline, overhead) {
@@ -574,6 +585,36 @@ function generateRandomWorkload() {
   runSimulation();
 }
 
+function loadPresetWorkload(type) {
+  if (type === 'convoy') {
+    processes = [
+      { id: 'P1', arrival: 0, burst: 14 },
+      { id: 'P2', arrival: 1, burst: 2 },
+      { id: 'P3', arrival: 2, burst: 1 },
+      { id: 'P4', arrival: 3, burst: 2 },
+    ];
+    algorithmSelect.value = 'FCFS';
+    contextSwitchInput.value = '0';
+    errorText.textContent = 'Loaded convoy-effect preset. Compare FCFS against SJF or RR.';
+  } else {
+    processes = [
+      { id: 'P1', arrival: 0, burst: 6 },
+      { id: 'P2', arrival: 1, burst: 2 },
+      { id: 'P3', arrival: 2, burst: 1 },
+      { id: 'P4', arrival: 4, burst: 3 },
+      { id: 'P5', arrival: 6, burst: 2 },
+    ];
+    algorithmSelect.value = 'RR';
+    quantumInput.value = '2';
+    contextSwitchInput.value = '1';
+    errorText.textContent = 'Loaded interactive preset. Round Robin now shows context-switch tradeoffs.';
+  }
+
+  renderProcessTable();
+  updateQuantumVisibility();
+  runSimulation();
+}
+
 addProcessBtn.addEventListener('click', () => {
   processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
   renderProcessTable();
@@ -583,6 +624,8 @@ algorithmSelect.addEventListener('change', updateQuantumVisibility);
 runButton.addEventListener('click', runSimulation);
 exportCsvButton.addEventListener('click', exportSimulationCsv);
 randomWorkloadBtn.addEventListener('click', generateRandomWorkload);
+presetConvoyBtn.addEventListener('click', () => loadPresetWorkload('convoy'));
+presetInteractiveBtn.addEventListener('click', () => loadPresetWorkload('interactive'));
 
 renderProcessTable();
 updateQuantumVisibility();
