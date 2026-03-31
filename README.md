@@ -12,6 +12,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - Round Robin (configurable quantum)
 - Timeline (Gantt chart) with idle segments included.
 - Workload import/export as JSON for reproducible comparisons.
+- Compare-all benchmark table across FCFS, SJF, SRTF, and RR for the same workload.
 - Per-process metrics:
   - Completion time
   - Turnaround time

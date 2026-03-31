@@ -195,6 +195,11 @@ select {
   font-size: 0.95rem;
 }
 
+.comparison-head {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
 .gantt {
   display: flex;
   min-height: 84px;

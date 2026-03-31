@@ -3,6 +3,8 @@ const addProcessBtn = document.getElementById('add-process');
 const randomWorkloadBtn = document.getElementById('random-workload');
 const runButton = document.getElementById('run-sim');
 const exportCsvButton = document.getElementById('export-csv');
+const compareAllButton = document.getElementById('compare-all');
+const comparisonBody = document.getElementById('comparison-body');
 const algorithmSelect = document.getElementById('algorithm');
 const quantumWrap = document.getElementById('quantum-wrap');
 const quantumInput = document.getElementById('quantum');
@@ -535,6 +537,72 @@ function runSimulation() {
   };
 }
 
+function runAlgorithmForComparison(processList, algorithm, quantum, contextSwitchCost) {
+  let result;
+
+  if (algorithm === 'RR') {
+    result = simulateRR(processList, quantum);
+  } else if (algorithm === 'SJF') {
+    result = simulateSJF(processList);
+  } else if (algorithm === 'SRTF') {
+    result = simulateSRTF(processList);
+  } else {
+    result = simulateFCFS(processList);
+  }
+
+  const timelineWithOverhead = applyContextSwitchOverhead(result.timeline, contextSwitchCost);
+  const derivedTimes = deriveTimesFromTimeline(
+    timelineWithOverhead,
+    processList.map((process) => process.id)
+  );
+
+  return buildMetrics(processList, derivedTimes.completionTimes, derivedTimes.firstStartTimes, timelineWithOverhead);
+}
+
+function compareAllAlgorithms() {
+  errorText.textContent = '';
+  const validation = validateProcesses();
+  if (!validation.ok) {
+    errorText.textContent = validation.message;
+    return;
+  }
+
+  const contextSwitchCost = Number.parseInt(contextSwitchInput.value, 10);
+  const quantum = Number.parseInt(quantumInput.value, 10);
+  if (!Number.isInteger(contextSwitchCost) || contextSwitchCost < 0) {
+    errorText.textContent = 'Context switch cost must be an integer >= 0.';
+    return;
+  }
+  if (!Number.isInteger(quantum) || quantum <= 0) {
+    errorText.textContent = 'Round Robin requires a valid quantum (integer > 0).';
+    return;
+  }
+
+  const algorithms = ['FCFS', 'SJF', 'SRTF', 'RR'];
+  const rows = algorithms.map((algorithm) => ({
+    algorithm,
+    metrics: runAlgorithmForComparison(validation.processes, algorithm, quantum, contextSwitchCost),
+  }));
+
+  rows.sort((a, b) => a.metrics.averages.waiting - b.metrics.averages.waiting);
+
+  comparisonBody.innerHTML = rows
+    .map(
+      ({ algorithm, metrics }) => `
+        <tr>
+          <td>${algorithm}</td>
+          <td>${metrics.averages.waiting.toFixed(2)}</td>
+          <td>${metrics.averages.response.toFixed(2)}</td>
+          <td>${metrics.averages.turnaround.toFixed(2)}</td>
+          <td>${metrics.utilization.toFixed(1)}%</td>
+        </tr>
+      `
+    )
+    .join('');
+
+  errorText.textContent = `${rows[0].algorithm} currently has the best average waiting time on this workload.`;
+}
+
 function exportSimulationCsv() {
   if (!lastSimulation) {
     errorText.textContent = 'Run a simulation before exporting.';
@@ -676,6 +744,7 @@ presetInteractiveBtn.addEventListener('click', () => loadPresetWorkload('interac
 exportWorkloadBtn.addEventListener('click', exportWorkload);
 importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
 importWorkloadFile.addEventListener('change', importWorkload);
+compareAllButton.addEventListener('click', compareAllAlgorithms);
 
 renderProcessTable();
 updateQuantumVisibility();
