@@ -433,6 +433,52 @@ function renderMetrics(metrics) {
   contextSwitchTimeEl.textContent = `${metrics.contextSwitchTime.toFixed(1)} time`;
 }
 
+function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
+  const insights = [algorithmNotes[algorithm]];
+
+  if (metrics.longestWait >= metrics.averages.waiting * 1.8 && metrics.longestWait >= 4) {
+    insights.push('Longest wait is much higher than the average, so this workload is showing queue unfairness or convoy pressure.');
+  }
+
+  if (metrics.contextSwitchTime > 0) {
+    const overheadShare = (metrics.contextSwitchTime / Math.max(1, metrics.contextSwitchTime + metrics.idleTime + metrics.rows.reduce((sum, row) => sum + row.turnaround - row.waiting, 0))) * 100;
+    insights.push(
+      overheadShare >= 12
+        ? `Context switching is expensive here (${metrics.contextSwitchTime.toFixed(1)} time units), so smaller quanta are likely hurting throughput.`
+        : `Context switch cost is present (${contextSwitchCost} per switch) but not dominating the run.`
+    );
+  } else {
+    insights.push('No context-switch overhead is being added, so the comparison is isolating algorithm behavior only.');
+  }
+
+  if (metrics.averages.response <= metrics.averages.waiting * 0.6) {
+    insights.push('Response time is relatively strong, which suggests short jobs are getting CPU quickly.');
+  } else {
+    insights.push('Response time is close to waiting time, which usually means interactive tasks are not being favored.');
+  }
+
+  if (metrics.idleTime > 0) {
+    insights.push(`Idle gaps total ${metrics.idleTime.toFixed(1)} time units, so arrivals are leaving the CPU underutilized at points in the trace.`);
+  }
+
+  return insights.join(' ');
+}
+
+function buildComparisonSummary(rows, contextSwitchCost) {
+  if (!rows.length) return 'No comparison results yet.';
+
+  const bestWait = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best));
+  const bestResponse = rows.reduce((best, row) => (row.metrics.averages.response < best.metrics.averages.response ? row : best));
+  const bestUtilization = rows.reduce((best, row) => (row.metrics.utilization > best.metrics.utilization ? row : best));
+  const highestOverhead = rows.reduce((best, row) => (row.metrics.contextSwitchTime > best.metrics.contextSwitchTime ? row : best));
+
+  return `${bestWait.algorithm} minimizes waiting, ${bestResponse.algorithm} responds fastest, and ${bestUtilization.algorithm} keeps the CPU busiest. ${
+    contextSwitchCost > 0
+      ? `${highestOverhead.algorithm} pays the largest context-switch bill under the current overhead setting.`
+      : 'Context-switch overhead is disabled in this comparison.'
+  }`;
+}
+
 function applyContextSwitchOverhead(timeline, overhead) {
   if (!overhead) {
     return timeline.map((segment) => ({ ...segment }));
@@ -528,7 +574,7 @@ function runSimulation() {
   );
   renderGantt(timelineWithOverhead);
   renderMetrics(metrics);
-  noteEl.textContent = `${algorithmNotes[selectedAlgorithm]} Context switch cost applied: ${contextSwitchCost}.`;
+  noteEl.textContent = buildSimulationInsights(metrics, selectedAlgorithm, contextSwitchCost);
   lastSimulation = {
     algorithm: selectedAlgorithm,
     contextSwitchCost,
@@ -601,6 +647,7 @@ function compareAllAlgorithms() {
     .join('');
 
   errorText.textContent = `${rows[0].algorithm} currently has the best average waiting time on this workload.`;
+  noteEl.textContent = buildComparisonSummary(rows, contextSwitchCost);
 }
 
 function exportSimulationCsv() {

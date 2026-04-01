@@ -13,6 +13,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Timeline (Gantt chart) with idle segments included.
 - Workload import/export as JSON for reproducible comparisons.
 - Compare-all benchmark table across FCFS, SJF, SRTF, and RR for the same workload.
+- Automatic workload coach that flags convoy pressure, response-time tradeoffs, and context-switch overhead after each run.
 - Per-process metrics:
   - Completion time
   - Turnaround time
