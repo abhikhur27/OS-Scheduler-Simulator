@@ -18,6 +18,7 @@ const cpuUtilEl = document.getElementById('cpu-util');
 const throughputEl = document.getElementById('throughput');
 const idleTimeEl = document.getElementById('idle-time');
 const longestWaitEl = document.getElementById('longest-wait');
+const fairnessSpreadEl = document.getElementById('fairness-spread');
 const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
@@ -201,6 +202,7 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
       response: totals.response / rows.length,
     },
     longestWait: Math.max(...rows.map((row) => row.waiting)),
+    fairnessSpread: Math.max(...rows.map((row) => row.waiting)) - Math.min(...rows.map((row) => row.waiting)),
     utilization:
       (timeline.reduce((sum, segment) => {
         if (segment.pid === 'IDLE' || segment.pid === 'CS') return sum;
@@ -430,6 +432,7 @@ function renderMetrics(metrics) {
   throughputEl.textContent = `${metrics.throughput.toFixed(3)} proc/time`;
   idleTimeEl.textContent = `${metrics.idleTime.toFixed(1)} time`;
   longestWaitEl.textContent = `${metrics.longestWait.toFixed(1)} time`;
+  fairnessSpreadEl.textContent = `${metrics.fairnessSpread.toFixed(1)} time`;
   contextSwitchTimeEl.textContent = `${metrics.contextSwitchTime.toFixed(1)} time`;
 }
 
@@ -438,6 +441,12 @@ function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
 
   if (metrics.longestWait >= metrics.averages.waiting * 1.8 && metrics.longestWait >= 4) {
     insights.push('Longest wait is much higher than the average, so this workload is showing queue unfairness or convoy pressure.');
+  }
+
+  if (metrics.fairnessSpread >= 6) {
+    insights.push(`Wait times are spread across the workload by ${metrics.fairnessSpread.toFixed(1)} time units, so some processes are absorbing much more pain than others.`);
+  } else {
+    insights.push('Waiting time stays relatively tight across the workload, so fairness is holding up reasonably well.');
   }
 
   if (metrics.contextSwitchTime > 0) {
