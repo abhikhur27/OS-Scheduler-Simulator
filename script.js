@@ -20,6 +20,7 @@ const idleTimeEl = document.getElementById('idle-time');
 const longestWaitEl = document.getElementById('longest-wait');
 const fairnessSpreadEl = document.getElementById('fairness-spread');
 const contextSwitchTimeEl = document.getElementById('context-switch-time');
+const maxSlowdownEl = document.getElementById('max-slowdown');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -176,6 +177,7 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
       turnaround,
       waiting,
       response,
+      slowdown: turnaround / Math.max(1, process.burst),
     };
   });
 
@@ -216,6 +218,7 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
       if (segment.pid === 'CS') return sum + (segment.end - segment.start);
       return sum;
     }, 0),
+    maxSlowdown: Math.max(...rows.map((row) => row.slowdown)),
   };
 }
 
@@ -420,6 +423,7 @@ function renderMetrics(metrics) {
           <td>${row.turnaround}</td>
           <td>${row.waiting}</td>
           <td>${row.response}</td>
+          <td>${row.slowdown.toFixed(2)}x</td>
         </tr>
       `
     )
@@ -434,6 +438,7 @@ function renderMetrics(metrics) {
   longestWaitEl.textContent = `${metrics.longestWait.toFixed(1)} time`;
   fairnessSpreadEl.textContent = `${metrics.fairnessSpread.toFixed(1)} time`;
   contextSwitchTimeEl.textContent = `${metrics.contextSwitchTime.toFixed(1)} time`;
+  maxSlowdownEl.textContent = `${metrics.maxSlowdown.toFixed(2)}x`;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {

@@ -21,6 +21,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - Response time
 - Aggregate averages for quick comparison.
 - Fairness spread readout to show how uneven waiting time is across the workload.
+- Slowdown metric to surface which process got stretched furthest relative to its own burst time.
 
 ## Technical Design
 
