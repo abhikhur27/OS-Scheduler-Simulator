@@ -21,6 +21,7 @@ const longestWaitEl = document.getElementById('longest-wait');
 const fairnessSpreadEl = document.getElementById('fairness-spread');
 const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const maxSlowdownEl = document.getElementById('max-slowdown');
+const starvationWatchEl = document.getElementById('starvation-watch');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -439,6 +440,29 @@ function renderMetrics(metrics) {
   fairnessSpreadEl.textContent = `${metrics.fairnessSpread.toFixed(1)} time`;
   contextSwitchTimeEl.textContent = `${metrics.contextSwitchTime.toFixed(1)} time`;
   maxSlowdownEl.textContent = `${metrics.maxSlowdown.toFixed(2)}x`;
+  renderStarvationWatch(metrics);
+}
+
+function renderStarvationWatch(metrics) {
+  if (!starvationWatchEl) return;
+
+  const atRisk = metrics.rows
+    .map((row) => ({
+      ...row,
+      waitRatio: row.waiting / Math.max(1, row.turnaround),
+    }))
+    .filter((row) => row.waiting >= 4 && (row.slowdown >= 2.4 || row.waitRatio >= 0.55))
+    .sort((a, b) => b.slowdown - a.slowdown);
+
+  if (!atRisk.length) {
+    starvationWatchEl.textContent = 'Starvation watch: no process is currently showing a severe wait-to-work imbalance.';
+    return;
+  }
+
+  starvationWatchEl.textContent = `Starvation watch: ${atRisk
+    .slice(0, 3)
+    .map((row) => `${row.id} waited ${row.waiting.toFixed(1)} with slowdown ${row.slowdown.toFixed(2)}x`)
+    .join(' | ')}`;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
