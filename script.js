@@ -4,7 +4,9 @@ const randomWorkloadBtn = document.getElementById('random-workload');
 const runButton = document.getElementById('run-sim');
 const exportCsvButton = document.getElementById('export-csv');
 const compareAllButton = document.getElementById('compare-all');
+const sweepRrButton = document.getElementById('sweep-rr');
 const comparisonBody = document.getElementById('comparison-body');
+const rrSweepBody = document.getElementById('rr-sweep-body');
 const algorithmSelect = document.getElementById('algorithm');
 const quantumWrap = document.getElementById('quantum-wrap');
 const quantumInput = document.getElementById('quantum');
@@ -688,6 +690,51 @@ function compareAllAlgorithms() {
   noteEl.textContent = buildComparisonSummary(rows, contextSwitchCost);
 }
 
+function sweepRoundRobinQuantums() {
+  const validation = validateProcesses();
+  if (!validation.valid) {
+    errorText.textContent = validation.message;
+    return;
+  }
+
+  const contextSwitchCost = Number.parseInt(contextSwitchInput.value, 10);
+  if (!Number.isInteger(contextSwitchCost) || contextSwitchCost < 0) {
+    errorText.textContent = 'Context switch cost must be an integer >= 0.';
+    return;
+  }
+
+  const rows = Array.from({ length: 6 }, (_, index) => {
+    const quantum = index + 1;
+    return {
+      quantum,
+      metrics: runAlgorithmForComparison(validation.processes, 'RR', quantum, contextSwitchCost),
+    };
+  });
+
+  if (rrSweepBody) {
+    rrSweepBody.innerHTML = rows
+      .map(({ quantum, metrics }) => {
+        const bestWait = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best)).quantum;
+        const note = quantum === bestWait ? ' <- lowest wait' : '';
+        return `
+          <tr>
+            <td>${quantum}${note}</td>
+            <td>${metrics.averages.waiting.toFixed(2)}</td>
+            <td>${metrics.averages.response.toFixed(2)}</td>
+            <td>${metrics.averages.turnaround.toFixed(2)}</td>
+            <td>${metrics.utilization.toFixed(1)}%</td>
+          </tr>
+        `;
+      })
+      .join('');
+  }
+
+  const bestWaitRow = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best));
+  const bestResponseRow = rows.reduce((best, row) => (row.metrics.averages.response < best.metrics.averages.response ? row : best));
+  noteEl.textContent = `RR sweep: quantum ${bestWaitRow.quantum} minimizes waiting, while quantum ${bestResponseRow.quantum} responds fastest under the current context-switch cost.`;
+  errorText.textContent = 'Round Robin quantum sweep complete.';
+}
+
 function exportSimulationCsv() {
   if (!lastSimulation) {
     errorText.textContent = 'Run a simulation before exporting.';
@@ -830,6 +877,7 @@ exportWorkloadBtn.addEventListener('click', exportWorkload);
 importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
 importWorkloadFile.addEventListener('change', importWorkload);
 compareAllButton.addEventListener('click', compareAllAlgorithms);
+sweepRrButton.addEventListener('click', sweepRoundRobinQuantums);
 
 renderProcessTable();
 updateQuantumVisibility();
