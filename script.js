@@ -27,6 +27,10 @@ const starvationWatchEl = document.getElementById('starvation-watch');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
+const workloadArrivalSpanEl = document.getElementById('workload-arrival-span');
+const workloadBurstMixEl = document.getElementById('workload-burst-mix');
+const workloadShortShareEl = document.getElementById('workload-short-share');
+const workloadSummaryEl = document.getElementById('workload-summary');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
 const exportWorkloadBtn = document.getElementById('export-workload');
@@ -120,6 +124,44 @@ function renderProcessTable() {
     row.append(idCell, arrivalCell, burstCell, removeCell);
     processBody.appendChild(row);
   });
+
+  renderWorkloadFingerprint();
+}
+
+function renderWorkloadFingerprint() {
+  if (!workloadSummaryEl || !processes.length) return;
+
+  const arrivals = processes.map((process) => Number(process.arrival)).filter(Number.isFinite);
+  const bursts = processes.map((process) => Number(process.burst)).filter(Number.isFinite);
+  if (!arrivals.length || !bursts.length) {
+    workloadArrivalSpanEl.textContent = '-';
+    workloadBurstMixEl.textContent = '-';
+    workloadShortShareEl.textContent = '-';
+    workloadSummaryEl.textContent = 'Fill in valid arrival and burst values to fingerprint the workload.';
+    return;
+  }
+
+  const arrivalSpan = Math.max(...arrivals) - Math.min(...arrivals);
+  const avgBurst = bursts.reduce((sum, value) => sum + value, 0) / bursts.length;
+  const longestBurst = Math.max(...bursts);
+  const shortestBurst = Math.min(...bursts);
+  const shortJobs = bursts.filter((burst) => burst <= Math.max(2, avgBurst * 0.6)).length;
+  const shortShare = (shortJobs / bursts.length) * 100;
+
+  workloadArrivalSpanEl.textContent = `${arrivalSpan} time`;
+  workloadBurstMixEl.textContent = `${shortestBurst}-${longestBurst} burst`;
+  workloadShortShareEl.textContent = `${shortShare.toFixed(0)}%`;
+
+  let summary = 'The workload is mixed enough that SJF or SRTF are sensible baselines.';
+  if (arrivalSpan === 0 && longestBurst >= avgBurst * 1.8) {
+    summary = 'This looks convoy-prone: FCFS will amplify the long job, while SJF should cut average waiting.';
+  } else if (shortShare >= 50 && arrivalSpan > 0) {
+    summary = 'Short jobs arrive throughout the trace, so SRTF should respond best if preemption cost is acceptable.';
+  } else if (shortShare <= 25 && longestBurst - shortestBurst <= 2) {
+    summary = 'Burst sizes are tightly clustered, so Round Robin can trade a little overhead for fairness without much pain.';
+  }
+
+  workloadSummaryEl.textContent = summary;
 }
 
 function getNextProcessId() {
