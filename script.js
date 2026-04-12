@@ -24,6 +24,7 @@ const fairnessSpreadEl = document.getElementById('fairness-spread');
 const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const maxSlowdownEl = document.getElementById('max-slowdown');
 const starvationWatchEl = document.getElementById('starvation-watch');
+const slaBoardEl = document.getElementById('sla-board');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -485,6 +486,7 @@ function renderMetrics(metrics) {
   contextSwitchTimeEl.textContent = `${metrics.contextSwitchTime.toFixed(1)} time`;
   maxSlowdownEl.textContent = `${metrics.maxSlowdown.toFixed(2)}x`;
   renderStarvationWatch(metrics);
+  renderSlaBoard(metrics);
 }
 
 function renderStarvationWatch(metrics) {
@@ -507,6 +509,36 @@ function renderStarvationWatch(metrics) {
     .slice(0, 3)
     .map((row) => `${row.id} waited ${row.waiting.toFixed(1)} with slowdown ${row.slowdown.toFixed(2)}x`)
     .join(' | ')}`;
+}
+
+function renderSlaBoard(metrics) {
+  if (!slaBoardEl) return;
+
+  const responseBudget = Math.max(2, Math.ceil(metrics.averages.response));
+  const breaches = metrics.rows
+    .map((row) => {
+      const burstEstimate = row.turnaround / Math.max(row.slowdown, 1);
+      const batchBudget = Math.max(3, burstEstimate * 2.5);
+      return {
+        ...row,
+        batchBudget,
+        responseBreach: row.response > responseBudget,
+        turnaroundBreach: row.turnaround > batchBudget,
+      };
+    })
+    .filter((row) => row.responseBreach || row.turnaroundBreach)
+    .sort((a, b) => b.waiting - a.waiting);
+
+  if (!breaches.length) {
+    slaBoardEl.textContent = `SLA stress test: every process stayed within the current interactive response budget (${responseBudget}) and batch stretch budget.`;
+    return;
+  }
+
+  const worst = breaches[0];
+  const failureNotes = [];
+  if (worst.responseBreach) failureNotes.push(`response ${worst.response} > ${responseBudget}`);
+  if (worst.turnaroundBreach) failureNotes.push(`turnaround ${worst.turnaround} > ${worst.batchBudget.toFixed(1)}`);
+  slaBoardEl.textContent = `SLA stress test: ${breaches.length} process${breaches.length === 1 ? '' : 'es'} missed a practical service budget. Worst offender: ${worst.id} (${failureNotes.join(', ')}).`;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
