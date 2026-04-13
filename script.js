@@ -25,6 +25,7 @@ const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const maxSlowdownEl = document.getElementById('max-slowdown');
 const starvationWatchEl = document.getElementById('starvation-watch');
 const slaBoardEl = document.getElementById('sla-board');
+const decisionBriefEl = document.getElementById('decision-brief');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -459,7 +460,7 @@ function renderGantt(timeline) {
   ganttEl.innerHTML = html;
 }
 
-function renderMetrics(metrics) {
+function renderMetrics(metrics, algorithm, contextSwitchCost) {
   metricsBody.innerHTML = metrics.rows
     .map(
       (row) => `
@@ -487,6 +488,7 @@ function renderMetrics(metrics) {
   maxSlowdownEl.textContent = `${metrics.maxSlowdown.toFixed(2)}x`;
   renderStarvationWatch(metrics);
   renderSlaBoard(metrics);
+  renderDecisionBrief(metrics, algorithm, contextSwitchCost);
 }
 
 function renderStarvationWatch(metrics) {
@@ -539,6 +541,38 @@ function renderSlaBoard(metrics) {
   if (worst.responseBreach) failureNotes.push(`response ${worst.response} > ${responseBudget}`);
   if (worst.turnaroundBreach) failureNotes.push(`turnaround ${worst.turnaround} > ${worst.batchBudget.toFixed(1)}`);
   slaBoardEl.textContent = `SLA stress test: ${breaches.length} process${breaches.length === 1 ? '' : 'es'} missed a practical service budget. Worst offender: ${worst.id} (${failureNotes.join(', ')}).`;
+}
+
+function renderDecisionBrief(metrics, algorithm, contextSwitchCost) {
+  if (!decisionBriefEl) return;
+
+  const worstWaiter = [...metrics.rows].sort((a, b) => b.waiting - a.waiting)[0];
+  const quickestResponder = [...metrics.rows].sort((a, b) => a.response - b.response)[0];
+  const unfair = metrics.fairnessSpread >= 6;
+  const heavyOverhead = contextSwitchCost > 0 && metrics.contextSwitchTime >= Math.max(2, metrics.averages.waiting * 0.75);
+
+  const cues = [
+    `${algorithm} currently gives ${quickestResponder.id} the fastest first response (${quickestResponder.response.toFixed(1)}).`,
+    `${worstWaiter.id} absorbs the most waiting pain at ${worstWaiter.waiting.toFixed(1)} time units.`,
+  ];
+
+  if (unfair) {
+    cues.push('Fairness spread is wide, so the queue is favoring some jobs much more than others.');
+  } else {
+    cues.push('Fairness spread stays fairly tight, so pain is distributed reasonably evenly.');
+  }
+
+  if (algorithm === 'RR' && heavyOverhead) {
+    cues.push('Round Robin is paying a noticeable context-switch tax here; consider a larger quantum or lower switch cost.');
+  } else if ((algorithm === 'FCFS' || algorithm === 'SJF') && worstWaiter.response >= metrics.averages.response * 1.8) {
+    cues.push('An interactive lane is getting buried; a preemptive policy would likely improve perceived responsiveness.');
+  } else if (algorithm === 'SRTF' && metrics.contextSwitchTime > 0) {
+    cues.push('SRTF is responsive, but the preemption pattern only stays worth it while switch overhead remains low.');
+  } else {
+    cues.push('The current tuning is plausible for this workload; compare-all is the next check if you want a stronger recommendation.');
+  }
+
+  decisionBriefEl.textContent = `Decision brief: ${cues.join(' ')}`;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
@@ -687,7 +721,7 @@ function runSimulation() {
     timelineWithOverhead
   );
   renderGantt(timelineWithOverhead);
-  renderMetrics(metrics);
+  renderMetrics(metrics, selectedAlgorithm, contextSwitchCost);
   noteEl.textContent = buildSimulationInsights(metrics, selectedAlgorithm, contextSwitchCost);
   lastSimulation = {
     algorithm: selectedAlgorithm,
