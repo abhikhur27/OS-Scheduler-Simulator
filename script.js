@@ -35,6 +35,7 @@ const workloadShortShareEl = document.getElementById('workload-short-share');
 const workloadSummaryEl = document.getElementById('workload-summary');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
+const shareWorkloadBtn = document.getElementById('share-workload');
 const exportWorkloadBtn = document.getElementById('export-workload');
 const importWorkloadBtn = document.getElementById('import-workload');
 const importWorkloadFile = document.getElementById('import-workload-file');
@@ -54,6 +55,74 @@ let processes = [
   { id: 'P3', arrival: 2, burst: 8 },
 ];
 let lastSimulation = null;
+
+function serializeWorkload(processList) {
+  return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}`).join(';');
+}
+
+function parseSharedWorkload(raw) {
+  if (!raw) return null;
+
+  const parsed = raw
+    .split(';')
+    .map((row) => row.trim())
+    .filter(Boolean)
+    .map((row) => {
+      const [id, arrival, burst] = row.split(':');
+      return {
+        id: (id || '').trim().toUpperCase(),
+        arrival: Number.parseInt(arrival, 10),
+        burst: Number.parseInt(burst, 10),
+      };
+    });
+
+  if (!parsed.length) return null;
+  return parsed;
+}
+
+function syncUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  params.set('algorithm', algorithmSelect.value);
+  params.set('context', contextSwitchInput.value);
+  params.set('workload', serializeWorkload(processes));
+
+  if (algorithmSelect.value === 'RR') {
+    params.set('quantum', quantumInput.value);
+  } else {
+    params.delete('quantum');
+  }
+
+  const nextUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, '', nextUrl);
+}
+
+function hydrateFromUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  if (![...params.keys()].length) return false;
+
+  const algorithm = params.get('algorithm');
+  if (algorithm && algorithmNotes[algorithm]) {
+    algorithmSelect.value = algorithm;
+  }
+
+  const quantum = Number.parseInt(params.get('quantum') || '', 10);
+  if (Number.isInteger(quantum) && quantum > 0) {
+    quantumInput.value = String(quantum);
+  }
+
+  const context = Number.parseInt(params.get('context') || '', 10);
+  if (Number.isInteger(context) && context >= 0) {
+    contextSwitchInput.value = String(context);
+  }
+
+  const shared = parseSharedWorkload(params.get('workload') || '');
+  if (shared?.length) {
+    processes = shared;
+    return true;
+  }
+
+  return false;
+}
 
 function compareByArrivalThenId(a, b) {
   if (a.arrival !== b.arrival) {
@@ -87,6 +156,7 @@ function renderProcessTable() {
     idInput.maxLength = 6;
     idInput.addEventListener('input', (event) => {
       processes[index].id = event.target.value.trim().toUpperCase();
+      syncUrlState();
     });
     idCell.appendChild(idInput);
 
@@ -98,6 +168,8 @@ function renderProcessTable() {
     arrivalInput.value = process.arrival;
     arrivalInput.addEventListener('input', (event) => {
       processes[index].arrival = Number.parseInt(event.target.value, 10);
+      renderWorkloadFingerprint();
+      syncUrlState();
     });
     arrivalCell.appendChild(arrivalInput);
 
@@ -109,6 +181,8 @@ function renderProcessTable() {
     burstInput.value = process.burst;
     burstInput.addEventListener('input', (event) => {
       processes[index].burst = Number.parseInt(event.target.value, 10);
+      renderWorkloadFingerprint();
+      syncUrlState();
     });
     burstCell.appendChild(burstInput);
 
@@ -120,6 +194,7 @@ function renderProcessTable() {
     removeButton.addEventListener('click', () => {
       processes.splice(index, 1);
       renderProcessTable();
+      syncUrlState();
     });
     removeCell.appendChild(removeButton);
 
@@ -128,6 +203,7 @@ function renderProcessTable() {
   });
 
   renderWorkloadFingerprint();
+  syncUrlState();
 }
 
 function renderWorkloadFingerprint() {
@@ -982,11 +1058,21 @@ randomWorkloadBtn.addEventListener('click', generateRandomWorkload);
 presetConvoyBtn.addEventListener('click', () => loadPresetWorkload('convoy'));
 presetInteractiveBtn.addEventListener('click', () => loadPresetWorkload('interactive'));
 exportWorkloadBtn.addEventListener('click', exportWorkload);
+shareWorkloadBtn.addEventListener('click', async () => {
+  syncUrlState();
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    errorText.textContent = 'Share link copied with the current workload and scheduler settings.';
+  } catch (error) {
+    errorText.textContent = 'Clipboard copy failed in this environment.';
+  }
+});
 importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
 importWorkloadFile.addEventListener('change', importWorkload);
 compareAllButton.addEventListener('click', compareAllAlgorithms);
 sweepRrButton.addEventListener('click', sweepRoundRobinQuantums);
 
+hydrateFromUrlState();
 renderProcessTable();
 updateQuantumVisibility();
 runSimulation();
