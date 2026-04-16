@@ -35,6 +35,7 @@ const workloadShortShareEl = document.getElementById('workload-short-share');
 const workloadSummaryEl = document.getElementById('workload-summary');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
+const presetStarvationBtn = document.getElementById('preset-starvation');
 const shareWorkloadBtn = document.getElementById('share-workload');
 const exportWorkloadBtn = document.getElementById('export-workload');
 const importWorkloadBtn = document.getElementById('import-workload');
@@ -983,7 +984,7 @@ function loadPresetWorkload(type) {
     algorithmSelect.value = 'FCFS';
     contextSwitchInput.value = '0';
     errorText.textContent = 'Loaded convoy-effect preset. Compare FCFS against SJF or RR.';
-  } else {
+  } else if (type === 'interactive') {
     processes = [
       { id: 'P1', arrival: 0, burst: 6 },
       { id: 'P2', arrival: 1, burst: 2 },
@@ -995,6 +996,18 @@ function loadPresetWorkload(type) {
     quantumInput.value = '2';
     contextSwitchInput.value = '1';
     errorText.textContent = 'Loaded interactive preset. Round Robin now shows context-switch tradeoffs.';
+  } else {
+    processes = [
+      { id: 'P1', arrival: 0, burst: 18 },
+      { id: 'P2', arrival: 1, burst: 2 },
+      { id: 'P3', arrival: 2, burst: 2 },
+      { id: 'P4', arrival: 3, burst: 1 },
+      { id: 'P5', arrival: 5, burst: 2 },
+      { id: 'P6', arrival: 7, burst: 1 },
+    ];
+    algorithmSelect.value = 'SJF';
+    contextSwitchInput.value = '0';
+    errorText.textContent = 'Loaded starvation-watch preset. Compare SJF, SRTF, and RR to see who protects late short jobs without trapping the long runner.';
   }
 
   renderProcessTable();
@@ -1057,6 +1070,7 @@ exportCsvButton.addEventListener('click', exportSimulationCsv);
 randomWorkloadBtn.addEventListener('click', generateRandomWorkload);
 presetConvoyBtn.addEventListener('click', () => loadPresetWorkload('convoy'));
 presetInteractiveBtn.addEventListener('click', () => loadPresetWorkload('interactive'));
+presetStarvationBtn.addEventListener('click', () => loadPresetWorkload('starvation'));
 exportWorkloadBtn.addEventListener('click', exportWorkload);
 shareWorkloadBtn.addEventListener('click', async () => {
   syncUrlState();
