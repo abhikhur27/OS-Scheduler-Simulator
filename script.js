@@ -7,6 +7,7 @@ const compareAllButton = document.getElementById('compare-all');
 const sweepRrButton = document.getElementById('sweep-rr');
 const comparisonBody = document.getElementById('comparison-body');
 const rrSweepBody = document.getElementById('rr-sweep-body');
+const rrCoachEl = document.getElementById('rr-coach');
 const algorithmSelect = document.getElementById('algorithm');
 const quantumWrap = document.getElementById('quantum-wrap');
 const quantumInput = document.getElementById('quantum');
@@ -917,6 +918,17 @@ function sweepRoundRobinQuantums() {
   const bestWaitRow = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best));
   const bestResponseRow = rows.reduce((best, row) => (row.metrics.averages.response < best.metrics.averages.response ? row : best));
   noteEl.textContent = `RR sweep: quantum ${bestWaitRow.quantum} minimizes waiting, while quantum ${bestResponseRow.quantum} responds fastest under the current context-switch cost.`;
+  if (rrCoachEl) {
+    const overheadHeavy = rows.filter((row) => row.metrics.contextSwitchTime >= row.metrics.averages.waiting * 0.7);
+    const coach =
+      bestWaitRow.quantum === bestResponseRow.quantum
+        ? `Quantum coach: use q=${bestWaitRow.quantum}. It currently balances waiting and first-response time best on this workload.`
+        : `Quantum coach: q=${bestResponseRow.quantum} is the interactive pick, while q=${bestWaitRow.quantum} is the throughput-friendly pick.`;
+    const overheadNote = overheadHeavy.length
+      ? ` Smaller quantums are paying a visible context-switch tax for q=${overheadHeavy.map((row) => row.quantum).join(', ')}.`
+      : ' Context-switch overhead stays contained across the tested range.';
+    rrCoachEl.textContent = `${coach}${overheadNote}`;
+  }
   errorText.textContent = 'Round Robin quantum sweep complete.';
 }
 

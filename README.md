@@ -25,6 +25,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Fairness spread readout to show how uneven waiting time is across the workload.
 - Slowdown metric to surface which process got stretched furthest relative to its own burst time.
 - Starvation watch that flags processes with severe wait-to-work imbalance.
+- Round Robin quantum coach that turns the sweep table into an explicit tuning recommendation.
 
 ## Technical Design
 
