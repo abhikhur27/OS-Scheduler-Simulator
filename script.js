@@ -878,7 +878,7 @@ function compareAllAlgorithms() {
 
 function sweepRoundRobinQuantums() {
   const validation = validateProcesses();
-  if (!validation.valid) {
+  if (!validation.ok) {
     errorText.textContent = validation.message;
     return;
   }
@@ -1076,7 +1076,12 @@ addProcessBtn.addEventListener('click', () => {
   renderProcessTable();
 });
 
-algorithmSelect.addEventListener('change', updateQuantumVisibility);
+algorithmSelect.addEventListener('change', () => {
+  updateQuantumVisibility();
+  syncUrlState();
+});
+quantumInput.addEventListener('input', syncUrlState);
+contextSwitchInput.addEventListener('input', syncUrlState);
 runButton.addEventListener('click', runSimulation);
 exportCsvButton.addEventListener('click', exportSimulationCsv);
 randomWorkloadBtn.addEventListener('click', generateRandomWorkload);

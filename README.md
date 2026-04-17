@@ -26,6 +26,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Slowdown metric to surface which process got stretched furthest relative to its own burst time.
 - Starvation watch that flags processes with severe wait-to-work imbalance.
 - Round Robin quantum coach that turns the sweep table into an explicit tuning recommendation.
+- Scheduler settings now stay in the shareable URL while you tune algorithm, quantum, and context-switch cost.
 
 ## Technical Design
 
