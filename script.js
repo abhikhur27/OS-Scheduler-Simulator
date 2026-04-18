@@ -27,6 +27,7 @@ const maxSlowdownEl = document.getElementById('max-slowdown');
 const starvationWatchEl = document.getElementById('starvation-watch');
 const slaBoardEl = document.getElementById('sla-board');
 const decisionBriefEl = document.getElementById('decision-brief');
+const processPressureMapEl = document.getElementById('process-pressure-map');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -567,6 +568,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderStarvationWatch(metrics);
   renderSlaBoard(metrics);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
+  renderProcessPressureMap(metrics);
 }
 
 function renderStarvationWatch(metrics) {
@@ -651,6 +653,34 @@ function renderDecisionBrief(metrics, algorithm, contextSwitchCost) {
   }
 
   decisionBriefEl.textContent = `Decision brief: ${cues.join(' ')}`;
+}
+
+function renderProcessPressureMap(metrics) {
+  if (!processPressureMapEl) return;
+
+  const pressureRows = metrics.rows.map((row) => {
+    const interactive = row.response <= Math.max(2, metrics.averages.response);
+    const stretched = row.slowdown >= Math.max(1.8, metrics.maxSlowdown * 0.7);
+    const backlogHeavy = row.waiting >= Math.max(metrics.averages.waiting, row.burst);
+    let posture = 'Balanced';
+
+    if (interactive && !stretched) posture = 'Interactive-friendly';
+    else if (stretched || backlogHeavy) posture = 'At risk';
+    else if (row.turnaround >= metrics.averages.turnaround) posture = 'Batch-heavy';
+
+    return `${row.id}: ${posture} (response ${row.response.toFixed(1)}, wait ${row.waiting.toFixed(1)}, slowdown ${row.slowdown.toFixed(2)}x)`;
+  });
+
+  const atRiskCount = pressureRows.filter((row) => row.includes('At risk')).length;
+  const summary =
+    atRiskCount === 0
+      ? 'Pressure map: no process is falling into a clearly risky posture under the current schedule.'
+      : `Pressure map: ${atRiskCount} process${atRiskCount === 1 ? '' : 'es'} are drifting into an at-risk posture and deserve closer scheduling scrutiny.`;
+
+  processPressureMapEl.innerHTML = `
+    <p>${summary}</p>
+    ${pressureRows.map((row) => `<p>${row}</p>`).join('')}
+  `;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
