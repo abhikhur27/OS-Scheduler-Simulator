@@ -12,6 +12,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - Round Robin (configurable quantum)
 - Timeline (Gantt chart) with idle segments included.
 - Workload import/export as JSON for reproducible comparisons.
+- Copy Decision Brief turns the current workload fingerprint, tuned scheduler choice, and per-process outcome summary into a clipboard-ready note.
 - Compare-all benchmark table across FCFS, SJF, SRTF, and RR for the same workload.
 - Added a starvation-watch workload preset for contrasting long-running jobs against steady short arrivals.
 - Workload fingerprint panel that estimates convoy risk, burst skew, and the likely best scheduling family before a run.

@@ -39,6 +39,7 @@ const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
 const presetStarvationBtn = document.getElementById('preset-starvation');
 const shareWorkloadBtn = document.getElementById('share-workload');
+const copyDecisionBriefBtn = document.getElementById('copy-decision-brief');
 const exportWorkloadBtn = document.getElementById('export-workload');
 const importWorkloadBtn = document.getElementById('import-workload');
 const importWorkloadFile = document.getElementById('import-workload-file');
@@ -1001,6 +1002,33 @@ function exportSimulationCsv() {
   errorText.textContent = 'Exported simulation CSV.';
 }
 
+function buildDecisionBrief() {
+  const algorithm = algorithmSelect.value;
+  const lines = [
+    'CPU Scheduling Studio Decision Brief',
+    '',
+    `Algorithm: ${algorithm}`,
+    `Context switch cost: ${contextSwitchInput.value}`,
+    `Quantum: ${algorithm === 'RR' ? quantumInput.value : 'n/a'}`,
+    `Workload: ${serializeWorkload(processes)}`,
+    `Fingerprint: arrival span ${workloadArrivalSpanEl?.textContent || '-'} | burst mix ${workloadBurstMixEl?.textContent || '-'} | short jobs ${workloadShortShareEl?.textContent || '-'}`,
+    `Summary metrics: wait ${avgWaitEl?.textContent || '-'} | turnaround ${avgTatEl?.textContent || '-'} | response ${avgResponseEl?.textContent || '-'} | utilization ${cpuUtilEl?.textContent || '-'} | fairness ${fairnessSpreadEl?.textContent || '-'}`,
+    `Starvation watch: ${starvationWatchEl?.textContent || '-'}`,
+    `Decision brief: ${decisionBriefEl?.textContent || 'Run a simulation to generate a tuning brief.'}`,
+    `Pressure map: ${processPressureMapEl?.textContent || '-'}`,
+  ];
+
+  if (lastSimulation?.metrics?.rows?.length) {
+    lines.push('');
+    lines.push('Per-process rows:');
+    lastSimulation.metrics.rows.forEach((row) => {
+      lines.push(`${row.id}: completion ${row.completion}, turnaround ${row.turnaround}, waiting ${row.waiting}, response ${row.response}, slowdown ${row.slowdown.toFixed(2)}`);
+    });
+  }
+
+  return lines.join('\n');
+}
+
 function generateRandomWorkload() {
   const processCount = 4 + Math.floor(Math.random() * 4);
   processes = Array.from({ length: processCount }, (_, index) => ({
@@ -1124,6 +1152,14 @@ shareWorkloadBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(window.location.href);
     errorText.textContent = 'Share link copied with the current workload and scheduler settings.';
+  } catch (error) {
+    errorText.textContent = 'Clipboard copy failed in this environment.';
+  }
+});
+copyDecisionBriefBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(buildDecisionBrief());
+    errorText.textContent = 'Copied a decision brief with the current workload and simulation summary.';
   } catch (error) {
     errorText.textContent = 'Clipboard copy failed in this environment.';
   }
