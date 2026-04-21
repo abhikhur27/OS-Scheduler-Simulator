@@ -62,6 +62,13 @@ python -m http.server 8000
 
 Then open `http://localhost:8000`.
 
+## Portfolio Demo Path
+
+1. Load the `Starvation Watch Preset`.
+2. Run the current scheduler, then use `Compare All`.
+3. Sweep Round Robin quantums to show fairness versus overhead.
+4. Copy the decision brief for a reproducible scheduler recommendation.
+
 ## GitHub Pages Compatibility
 
 - No server/runtime dependency.

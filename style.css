@@ -239,6 +239,19 @@ select {
   color: var(--muted);
 }
 
+.demo-strip {
+  margin-top: 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.08);
+  padding: 0.8rem 1rem;
+  color: var(--muted);
+}
+
+.demo-strip strong {
+  color: var(--text);
+}
+
 .note {
   margin-top: 0.9rem;
   color: var(--muted);
