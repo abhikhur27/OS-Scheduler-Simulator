@@ -28,6 +28,7 @@ const starvationWatchEl = document.getElementById('starvation-watch');
 const slaBoardEl = document.getElementById('sla-board');
 const decisionBriefEl = document.getElementById('decision-brief');
 const processPressureMapEl = document.getElementById('process-pressure-map');
+const dispatchAuditEl = document.getElementById('dispatch-audit');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -324,6 +325,7 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
   }, 0);
 
   return {
+    timeline,
     rows,
     averages: {
       waiting: totals.waiting / rows.length,
@@ -570,6 +572,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderSlaBoard(metrics);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
+  renderDispatchAudit(metrics);
 }
 
 function renderStarvationWatch(metrics) {
@@ -682,6 +685,30 @@ function renderProcessPressureMap(metrics) {
     <p>${summary}</p>
     ${pressureRows.map((row) => `<p>${row}</p>`).join('')}
   `;
+}
+
+function renderDispatchAudit(metrics) {
+  if (!dispatchAuditEl) return;
+
+  const timeline = metrics.timeline || [];
+  const idleSegments = timeline.filter((segment) => segment.pid === 'IDLE');
+  const contextSwitches = timeline.filter((segment) => segment.pid === 'CS');
+  const processSegments = timeline.filter((segment) => segment.pid !== 'IDLE' && segment.pid !== 'CS');
+  const handoffs = processSegments.reduce((count, segment, index, segments) => {
+    if (index === 0) return count;
+    return segments[index - 1].pid === segment.pid ? count : count + 1;
+  }, 0);
+  const shortestRun = processSegments.length
+    ? Math.min(...processSegments.map((segment) => segment.end - segment.start))
+    : 0;
+  const churn =
+    handoffs >= processSegments.length * 0.55
+      ? 'high dispatch churn'
+      : handoffs >= processSegments.length * 0.3
+        ? 'moderate dispatch churn'
+        : 'low dispatch churn';
+
+  dispatchAuditEl.textContent = `Dispatch audit: ${idleSegments.length} idle gap${idleSegments.length === 1 ? '' : 's'}, ${handoffs} process handoff${handoffs === 1 ? '' : 's'}, ${contextSwitches.length} explicit context switch segment${contextSwitches.length === 1 ? '' : 's'}, and shortest run ${shortestRun}. This is ${churn}.`;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {

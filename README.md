@@ -29,6 +29,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Process pressure map classifies each process as interactive-friendly, batch-heavy, balanced, or at-risk after a run.
 - Round Robin quantum coach that turns the sweep table into an explicit tuning recommendation.
 - Scheduler settings now stay in the shareable URL while you tune algorithm, quantum, and context-switch cost.
+- Dispatch audit summarizes idle gaps, process handoffs, context-switch segments, and shortest run length after each simulation.
 
 ## Technical Design
 
