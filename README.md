@@ -27,6 +27,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Slowdown metric to surface which process got stretched furthest relative to its own burst time.
 - Starvation watch that flags processes with severe wait-to-work imbalance.
 - Process pressure map classifies each process as interactive-friendly, batch-heavy, balanced, or at-risk after a run.
+- Tail-risk board identifies which process absorbs the worst wait pain versus the worst slowdown pain.
 - Round Robin quantum coach that turns the sweep table into an explicit tuning recommendation.
 - Scheduler settings now stay in the shareable URL while you tune algorithm, quantum, and context-switch cost.
 - Dispatch audit summarizes idle gaps, process handoffs, context-switch segments, and shortest run length after each simulation.
@@ -69,6 +70,7 @@ Then open `http://localhost:8000`.
 2. Run the current scheduler, then use `Compare All`.
 3. Sweep Round Robin quantums to show fairness versus overhead.
 4. Copy the decision brief for a reproducible scheduler recommendation.
+5. Read the tail-risk board so the demo names who actually paid for the average metric.
 
 ## GitHub Pages Compatibility
 

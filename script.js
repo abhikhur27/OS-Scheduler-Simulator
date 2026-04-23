@@ -28,6 +28,7 @@ const starvationWatchEl = document.getElementById('starvation-watch');
 const slaBoardEl = document.getElementById('sla-board');
 const decisionBriefEl = document.getElementById('decision-brief');
 const processPressureMapEl = document.getElementById('process-pressure-map');
+const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
@@ -572,6 +573,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderSlaBoard(metrics);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
+  renderTailRiskBoard(metrics);
   renderDispatchAudit(metrics);
 }
 
@@ -685,6 +687,25 @@ function renderProcessPressureMap(metrics) {
     <p>${summary}</p>
     ${pressureRows.map((row) => `<p>${row}</p>`).join('')}
   `;
+}
+
+function renderTailRiskBoard(metrics) {
+  if (!tailRiskBoardEl) return;
+
+  if (!metrics.rows.length) {
+    tailRiskBoardEl.textContent = 'Run a simulation to see which process absorbs the worst tail-latency pain.';
+    return;
+  }
+
+  const byWait = [...metrics.rows].sort((a, b) => b.waiting - a.waiting);
+  const bySlowdown = [...metrics.rows].sort((a, b) => b.slowdown - a.slowdown);
+  const tailWait = byWait[0];
+  const tailSlow = bySlowdown[0];
+
+  tailRiskBoardEl.innerHTML =
+    tailWait.id === tailSlow.id
+      ? `<p><strong>${tailWait.id}</strong> is carrying both the longest wait (${tailWait.waiting.toFixed(1)}) and the heaviest slowdown (${tailWait.slowdown.toFixed(2)}x). This scheduler is creating one obvious tail-risk victim.</p>`
+      : `<p><strong>${tailWait.id}</strong> absorbs the longest queue wait (${tailWait.waiting.toFixed(1)}), while <strong>${tailSlow.id}</strong> suffers the worst self-relative stretch (${tailSlow.slowdown.toFixed(2)}x slowdown). Tail pain is split across two different process types.</p>`;
 }
 
 function renderDispatchAudit(metrics) {
@@ -1043,6 +1064,7 @@ function buildDecisionBrief() {
     `Starvation watch: ${starvationWatchEl?.textContent || '-'}`,
     `Decision brief: ${decisionBriefEl?.textContent || 'Run a simulation to generate a tuning brief.'}`,
     `Pressure map: ${processPressureMapEl?.textContent || '-'}`,
+    `Tail risk: ${tailRiskBoardEl?.textContent || '-'}`,
   ];
 
   if (lastSimulation?.metrics?.rows?.length) {
