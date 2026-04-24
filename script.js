@@ -6,6 +6,7 @@ const exportCsvButton = document.getElementById('export-csv');
 const compareAllButton = document.getElementById('compare-all');
 const sweepRrButton = document.getElementById('sweep-rr');
 const comparisonBody = document.getElementById('comparison-body');
+const compareHistoryEl = document.getElementById('compare-history');
 const rrSweepBody = document.getElementById('rr-sweep-body');
 const rrCoachEl = document.getElementById('rr-coach');
 const algorithmSelect = document.getElementById('algorithm');
@@ -61,6 +62,7 @@ let processes = [
   { id: 'P3', arrival: 2, burst: 8 },
 ];
 let lastSimulation = null;
+let compareHistory = [];
 
 function serializeWorkload(processList) {
   return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}`).join(';');
@@ -950,6 +952,14 @@ function compareAllAlgorithms() {
       `
     )
     .join('');
+
+  compareHistory = [
+    `${rows[0].algorithm} won this ${validation.processes.length}-process workload; ${rows[rows.length - 1].algorithm} trailed on average wait.`,
+    ...compareHistory,
+  ].slice(0, 4);
+  if (compareHistoryEl) {
+    compareHistoryEl.innerHTML = compareHistory.map((entry) => `<p>${entry}</p>`).join('');
+  }
 
   errorText.textContent = `${rows[0].algorithm} currently has the best average waiting time on this workload.`;
   noteEl.textContent = buildComparisonSummary(rows, contextSwitchCost);

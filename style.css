@@ -258,6 +258,10 @@ select {
   font-size: 0.9rem;
 }
 
+.compare-history {
+  margin-top: 0.95rem;
+}
+
 @media (max-width: 950px) {
   .layout {
     grid-template-columns: 1fr;
