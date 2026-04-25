@@ -17,6 +17,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Added a starvation-watch workload preset for contrasting long-running jobs against steady short arrivals.
 - Workload fingerprint panel that estimates convoy risk, burst skew, and the likely best scheduling family before a run.
 - Automatic workload coach that flags convoy pressure, response-time tradeoffs, and context-switch overhead after each run.
+- Service posture board classifies whether the current scheduler is behaving more like an interactive, batch-heavy, or mixed policy.
 - Per-process metrics:
   - Completion time
   - Turnaround time

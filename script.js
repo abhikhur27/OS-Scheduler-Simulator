@@ -27,6 +27,7 @@ const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const maxSlowdownEl = document.getElementById('max-slowdown');
 const starvationWatchEl = document.getElementById('starvation-watch');
 const slaBoardEl = document.getElementById('sla-board');
+const servicePostureEl = document.getElementById('service-posture');
 const decisionBriefEl = document.getElementById('decision-brief');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
@@ -573,6 +574,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   maxSlowdownEl.textContent = `${metrics.maxSlowdown.toFixed(2)}x`;
   renderStarvationWatch(metrics);
   renderSlaBoard(metrics);
+  renderServicePosture(metrics, algorithm);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
   renderTailRiskBoard(metrics);
@@ -629,6 +631,28 @@ function renderSlaBoard(metrics) {
   if (worst.responseBreach) failureNotes.push(`response ${worst.response} > ${responseBudget}`);
   if (worst.turnaroundBreach) failureNotes.push(`turnaround ${worst.turnaround} > ${worst.batchBudget.toFixed(1)}`);
   slaBoardEl.textContent = `SLA stress test: ${breaches.length} process${breaches.length === 1 ? '' : 'es'} missed a practical service budget. Worst offender: ${worst.id} (${failureNotes.join(', ')}).`;
+}
+
+function renderServicePosture(metrics, algorithm) {
+  if (!servicePostureEl) return;
+
+  const fastResponse = metrics.averages.response <= Math.max(2, metrics.averages.waiting * 0.65);
+  const fairQueue = metrics.fairnessSpread <= Math.max(4, metrics.averages.waiting * 0.75);
+  const heavySlowdown = metrics.maxSlowdown >= 3;
+  const posture = fastResponse && fairQueue
+    ? 'Interactive-friendly'
+    : !fastResponse && heavySlowdown
+      ? 'Batch-heavy'
+      : 'Mixed';
+
+  const cue =
+    posture === 'Interactive-friendly'
+      ? `${algorithm} is keeping first response times tight without spreading wait pain too unevenly.`
+      : posture === 'Batch-heavy'
+        ? `${algorithm} is stretching some jobs hard enough that throughput is coming at a visible responsiveness cost.`
+        : `${algorithm} is splitting the difference: some processes respond quickly, but fairness or slowdown still needs attention.`;
+
+  servicePostureEl.textContent = `Service posture: ${posture}. ${cue}`;
 }
 
 function renderDecisionBrief(metrics, algorithm, contextSwitchCost) {
