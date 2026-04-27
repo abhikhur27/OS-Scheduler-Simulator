@@ -29,6 +29,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Starvation watch that flags processes with severe wait-to-work imbalance.
 - Process pressure map classifies each process as interactive-friendly, batch-heavy, balanced, or at-risk after a run.
 - Tail-risk board identifies which process absorbs the worst wait pain versus the worst slowdown pain.
+- Preemption watch calls out when the workload actually wants interrupt-friendly scheduling rather than a simpler non-preemptive baseline.
 - Round Robin quantum coach that turns the sweep table into an explicit tuning recommendation.
 - Scheduler settings now stay in the shareable URL while you tune algorithm, quantum, and context-switch cost.
 - Dispatch audit summarizes idle gaps, process handoffs, context-switch segments, and shortest run length after each simulation.

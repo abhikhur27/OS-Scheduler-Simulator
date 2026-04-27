@@ -32,6 +32,7 @@ const decisionBriefEl = document.getElementById('decision-brief');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
+const preemptionWatchEl = document.getElementById('preemption-watch');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
 const noteEl = document.getElementById('algorithm-note');
@@ -579,6 +580,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderProcessPressureMap(metrics);
   renderTailRiskBoard(metrics);
   renderDispatchAudit(metrics);
+  renderPreemptionWatch(metrics, algorithm);
 }
 
 function renderStarvationWatch(metrics) {
@@ -756,6 +758,28 @@ function renderDispatchAudit(metrics) {
         : 'low dispatch churn';
 
   dispatchAuditEl.textContent = `Dispatch audit: ${idleSegments.length} idle gap${idleSegments.length === 1 ? '' : 's'}, ${handoffs} process handoff${handoffs === 1 ? '' : 's'}, ${contextSwitches.length} explicit context switch segment${contextSwitches.length === 1 ? '' : 's'}, and shortest run ${shortestRun}. This is ${churn}.`;
+}
+
+function renderPreemptionWatch(metrics, algorithm) {
+  if (!preemptionWatchEl) return;
+
+  const shortArrivals = metrics.rows.filter((row) => row.response <= Math.max(2, metrics.averages.response) && row.waiting <= row.turnaround * 0.45).length;
+  const punishedLongJob = metrics.rows.some((row) => row.slowdown >= 3 && row.waiting >= row.response * 1.5);
+  const interactivePressure = shortArrivals >= Math.ceil(metrics.rows.length / 2);
+  const wantsPreemption = interactivePressure && metrics.averages.response > 1.8;
+
+  if (algorithm === 'SRTF' || algorithm === 'RR') {
+    preemptionWatchEl.textContent = wantsPreemption
+      ? `Preemption watch: this workload does benefit from fast first response, and ${algorithm} is aligned with that pressure. Keep an eye on slowdown for the stretched long job.`
+      : `Preemption watch: ${algorithm} is responsive, but this workload may not need that much interruption. Compare against SJF if you want a simpler baseline.`;
+    return;
+  }
+
+  preemptionWatchEl.textContent = wantsPreemption
+    ? 'Preemption watch: short arrivals are stacking up behind slower work, so a preemptive policy would likely improve perceived responsiveness.'
+    : punishedLongJob
+      ? 'Preemption watch: a long job is suffering, but the bigger issue is fairness stretch rather than pure response latency. Tune policy choice around slowdown, not just preemption.'
+      : 'Preemption watch: this workload is not strongly demanding preemption right now. Non-preemptive baselines remain defensible.';
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
