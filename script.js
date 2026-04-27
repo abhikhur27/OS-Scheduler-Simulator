@@ -27,6 +27,7 @@ const contextSwitchTimeEl = document.getElementById('context-switch-time');
 const maxSlowdownEl = document.getElementById('max-slowdown');
 const starvationWatchEl = document.getElementById('starvation-watch');
 const slaBoardEl = document.getElementById('sla-board');
+const deadlineFitBoardEl = document.getElementById('deadline-fit-board');
 const servicePostureEl = document.getElementById('service-posture');
 const decisionBriefEl = document.getElementById('decision-brief');
 const processPressureMapEl = document.getElementById('process-pressure-map');
@@ -575,6 +576,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   maxSlowdownEl.textContent = `${metrics.maxSlowdown.toFixed(2)}x`;
   renderStarvationWatch(metrics);
   renderSlaBoard(metrics);
+  renderDeadlineFitBoard(metrics);
   renderServicePosture(metrics, algorithm);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
@@ -633,6 +635,31 @@ function renderSlaBoard(metrics) {
   if (worst.responseBreach) failureNotes.push(`response ${worst.response} > ${responseBudget}`);
   if (worst.turnaroundBreach) failureNotes.push(`turnaround ${worst.turnaround} > ${worst.batchBudget.toFixed(1)}`);
   slaBoardEl.textContent = `SLA stress test: ${breaches.length} process${breaches.length === 1 ? '' : 'es'} missed a practical service budget. Worst offender: ${worst.id} (${failureNotes.join(', ')}).`;
+}
+
+function renderDeadlineFitBoard(metrics) {
+  if (!deadlineFitBoardEl) return;
+
+  const rows = metrics.rows.map((row) => {
+    const burstEstimate = row.turnaround / Math.max(row.slowdown, 1);
+    const interactiveDeadline = Math.max(2, Math.ceil(metrics.averages.response * 1.5));
+    const batchDeadline = Math.max(4, Math.ceil(burstEstimate * 3));
+    return {
+      ...row,
+      interactiveDeadline,
+      batchDeadline,
+      missesInteractive: row.response > interactiveDeadline,
+      missesBatch: row.turnaround > batchDeadline,
+    };
+  });
+
+  const interactiveMisses = rows.filter((row) => row.missesInteractive);
+  const batchMisses = rows.filter((row) => row.missesBatch);
+
+  deadlineFitBoardEl.textContent =
+    interactiveMisses.length || batchMisses.length
+      ? `Deadline fit: interactive misses ${interactiveMisses.length ? interactiveMisses.map((row) => `${row.id} (>${row.interactiveDeadline} response)`).join(', ') : 'none'} | batch misses ${batchMisses.length ? batchMisses.map((row) => `${row.id} (>${row.batchDeadline} turnaround)`).join(', ') : 'none'}.`
+      : 'Deadline fit: no processes miss the current soft interactive or batch deadlines under this simulation.';
 }
 
 function renderServicePosture(metrics, algorithm) {
