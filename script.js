@@ -1263,6 +1263,11 @@ function importWorkload(event) {
   reader.readAsText(file);
 }
 
+function isEditableTarget(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+
 addProcessBtn.addEventListener('click', () => {
   processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
   renderProcessTable();
@@ -1307,3 +1312,47 @@ hydrateFromUrlState();
 renderProcessTable();
 updateQuantumVisibility();
 runSimulation();
+
+document.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || isEditableTarget(event.target)) {
+    return;
+  }
+
+  const key = event.key.toLowerCase();
+  if (key === 'r') {
+    event.preventDefault();
+    runSimulation();
+    return;
+  }
+
+  if (key === 'a') {
+    event.preventDefault();
+    processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
+    renderProcessTable();
+    errorText.textContent = 'Added a new process row.';
+    return;
+  }
+
+  if (key === 'w') {
+    event.preventDefault();
+    generateRandomWorkload();
+    return;
+  }
+
+  if (event.key === '1') {
+    event.preventDefault();
+    loadPresetWorkload('convoy');
+    return;
+  }
+
+  if (event.key === '2') {
+    event.preventDefault();
+    loadPresetWorkload('interactive');
+    return;
+  }
+
+  if (event.key === '3') {
+    event.preventDefault();
+    loadPresetWorkload('starvation');
+  }
+});

@@ -84,4 +84,4 @@ Then open `http://localhost:8000`.
 
 - Priority scheduling and multilevel feedback queue.
 - Context-switch overhead visualization.
-- Import/export JSON workloads for reproducible benchmarks.
+- Add per-segment hover detail for timeline slices and context-switch intervals.
