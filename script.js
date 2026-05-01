@@ -44,6 +44,7 @@ const workloadSummaryEl = document.getElementById('workload-summary');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
 const presetStarvationBtn = document.getElementById('preset-starvation');
+const presetDeadlineBtn = document.getElementById('preset-deadline');
 const shareWorkloadBtn = document.getElementById('share-workload');
 const copyDecisionBriefBtn = document.getElementById('copy-decision-brief');
 const exportWorkloadBtn = document.getElementById('export-workload');
@@ -1200,7 +1201,7 @@ function loadPresetWorkload(type) {
     quantumInput.value = '2';
     contextSwitchInput.value = '1';
     errorText.textContent = 'Loaded interactive preset. Round Robin now shows context-switch tradeoffs.';
-  } else {
+  } else if (type === 'starvation') {
     processes = [
       { id: 'P1', arrival: 0, burst: 18 },
       { id: 'P2', arrival: 1, burst: 2 },
@@ -1212,6 +1213,19 @@ function loadPresetWorkload(type) {
     algorithmSelect.value = 'SJF';
     contextSwitchInput.value = '0';
     errorText.textContent = 'Loaded starvation-watch preset. Compare SJF, SRTF, and RR to see who protects late short jobs without trapping the long runner.';
+  } else {
+    processes = [
+      { id: 'P1', arrival: 0, burst: 5 },
+      { id: 'P2', arrival: 0, burst: 2 },
+      { id: 'P3', arrival: 1, burst: 1 },
+      { id: 'P4', arrival: 2, burst: 7 },
+      { id: 'P5', arrival: 3, burst: 2 },
+      { id: 'P6', arrival: 4, burst: 1 },
+    ];
+    algorithmSelect.value = 'SRTF';
+    contextSwitchInput.value = '1';
+    quantumInput.value = '2';
+    errorText.textContent = 'Loaded deadline-crunch preset. Compare SRTF against RR to see which policy protects urgent short jobs without overpaying context-switch overhead.';
   }
 
   renderProcessTable();
@@ -1285,6 +1299,7 @@ randomWorkloadBtn.addEventListener('click', generateRandomWorkload);
 presetConvoyBtn.addEventListener('click', () => loadPresetWorkload('convoy'));
 presetInteractiveBtn.addEventListener('click', () => loadPresetWorkload('interactive'));
 presetStarvationBtn.addEventListener('click', () => loadPresetWorkload('starvation'));
+presetDeadlineBtn.addEventListener('click', () => loadPresetWorkload('deadline'));
 exportWorkloadBtn.addEventListener('click', exportWorkload);
 shareWorkloadBtn.addEventListener('click', async () => {
   syncUrlState();
@@ -1354,5 +1369,11 @@ document.addEventListener('keydown', (event) => {
   if (event.key === '3') {
     event.preventDefault();
     loadPresetWorkload('starvation');
+    return;
+  }
+
+  if (event.key === '4') {
+    event.preventDefault();
+    loadPresetWorkload('deadline');
   }
 });
