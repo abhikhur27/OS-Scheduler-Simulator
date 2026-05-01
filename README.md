@@ -27,6 +27,8 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Fairness spread readout to show how uneven waiting time is across the workload.
 - Slowdown metric to surface which process got stretched furthest relative to its own burst time.
 - Starvation watch that flags processes with severe wait-to-work imbalance.
+- SLA stress board that calls out which processes violate practical interactive or batch service expectations.
+- Deadline-fit board that estimates which jobs miss soft interactive or batch deadlines under the current scheduler.
 - Process pressure map classifies each process as interactive-friendly, batch-heavy, balanced, or at-risk after a run.
 - Tail-risk board identifies which process absorbs the worst wait pain versus the worst slowdown pain.
 - Preemption watch calls out when the workload actually wants interrupt-friendly scheduling rather than a simpler non-preemptive baseline.
