@@ -32,6 +32,7 @@ const servicePostureEl = document.getElementById('service-posture');
 const decisionBriefEl = document.getElementById('decision-brief');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
+const criticalPathBoardEl = document.getElementById('critical-path-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
 const preemptionWatchEl = document.getElementById('preemption-watch');
 const metricsBody = document.getElementById('metrics-body');
@@ -582,6 +583,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
   renderTailRiskBoard(metrics);
+  renderCriticalPathBoard(metrics);
   renderDispatchAudit(metrics);
   renderPreemptionWatch(metrics, algorithm);
 }
@@ -762,6 +764,37 @@ function renderTailRiskBoard(metrics) {
     tailWait.id === tailSlow.id
       ? `<p><strong>${tailWait.id}</strong> is carrying both the longest wait (${tailWait.waiting.toFixed(1)}) and the heaviest slowdown (${tailWait.slowdown.toFixed(2)}x). This scheduler is creating one obvious tail-risk victim.</p>`
       : `<p><strong>${tailWait.id}</strong> absorbs the longest queue wait (${tailWait.waiting.toFixed(1)}), while <strong>${tailSlow.id}</strong> suffers the worst self-relative stretch (${tailSlow.slowdown.toFixed(2)}x slowdown). Tail pain is split across two different process types.</p>`;
+}
+
+function renderCriticalPathBoard(metrics) {
+  if (!criticalPathBoardEl) return;
+
+  if (!metrics.rows.length || !metrics.timeline.length) {
+    criticalPathBoardEl.textContent = 'Run a simulation to see which processes actually drive the finish time.';
+    return;
+  }
+
+  const makespan = metrics.timeline[metrics.timeline.length - 1]?.end || 0;
+  const finishTime = Math.max(...metrics.rows.map((row) => row.completion));
+  const finishers = metrics.rows.filter((row) => row.completion === finishTime);
+  const lateWindowStart = makespan * 0.7;
+  const lateShares = new Map();
+
+  metrics.timeline
+    .filter((segment) => segment.pid !== 'IDLE' && segment.pid !== 'CS' && segment.end > lateWindowStart)
+    .forEach((segment) => {
+      const overlap = Math.max(0, segment.end - Math.max(segment.start, lateWindowStart));
+      lateShares.set(segment.pid, (lateShares.get(segment.pid) || 0) + overlap);
+    });
+
+  const dominantLateRunner = [...lateShares.entries()].sort((a, b) => b[1] - a[1])[0];
+  const finalPid = [...metrics.timeline].reverse().find((segment) => segment.pid !== 'IDLE' && segment.pid !== 'CS')?.pid || 'none';
+
+  criticalPathBoardEl.innerHTML = `
+    <p><strong>Critical path:</strong> ${finishers.map((row) => row.id).join(', ')} set the finish line at time ${finishTime.toFixed(1)}.</p>
+    <p><strong>Final executor:</strong> ${finalPid} owns the last active slice before the schedule ends.</p>
+    <p><strong>Late-stage pressure:</strong> ${dominantLateRunner ? `${dominantLateRunner[0]} consumed ${dominantLateRunner[1].toFixed(1)} of the final ${(makespan - lateWindowStart).toFixed(1)} time units, so speeding up that lane would move makespan fastest.` : 'The late schedule is too fragmented to pin on one process.'}</p>
+  `;
 }
 
 function renderDispatchAudit(metrics) {
@@ -1151,6 +1184,7 @@ function buildDecisionBrief() {
     `Decision brief: ${decisionBriefEl?.textContent || 'Run a simulation to generate a tuning brief.'}`,
     `Pressure map: ${processPressureMapEl?.textContent || '-'}`,
     `Tail risk: ${tailRiskBoardEl?.textContent || '-'}`,
+    `Critical path: ${criticalPathBoardEl?.textContent || '-'}`,
   ];
 
   if (lastSimulation?.metrics?.rows?.length) {
