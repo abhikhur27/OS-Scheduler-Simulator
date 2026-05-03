@@ -30,6 +30,7 @@ const slaBoardEl = document.getElementById('sla-board');
 const deadlineFitBoardEl = document.getElementById('deadline-fit-board');
 const servicePostureEl = document.getElementById('service-posture');
 const decisionBriefEl = document.getElementById('decision-brief');
+const policySwapBoardEl = document.getElementById('policy-swap-board');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
@@ -68,6 +69,7 @@ let processes = [
 ];
 let lastSimulation = null;
 let compareHistory = [];
+let lastComparisonRows = [];
 
 function serializeWorkload(processList) {
   return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}`).join(';');
@@ -719,6 +721,41 @@ function renderDecisionBrief(metrics, algorithm, contextSwitchCost) {
   decisionBriefEl.textContent = `Decision brief: ${cues.join(' ')}`;
 }
 
+function renderPolicySwapBoard(metrics = null, algorithm = null) {
+  if (!policySwapBoardEl) return;
+
+  if (lastComparisonRows.length && algorithm) {
+    const ranked = [...lastComparisonRows].sort((a, b) => a.metrics.averages.waiting - b.metrics.averages.waiting);
+    const current = ranked.find((row) => row.algorithm === algorithm);
+    const leader = ranked[0];
+    if (!current || !leader) {
+      policySwapBoardEl.textContent = 'Run Compare All or one simulation to get a concrete stay-vs-switch scheduler recommendation.';
+      return;
+    }
+
+    if (current.algorithm === leader.algorithm) {
+      policySwapBoardEl.textContent = `${algorithm} is the current leader on average wait. Keep it unless fairness or context-switch cost, not waiting time, is the real story you want to tell.`;
+    } else {
+      const waitGap = current.metrics.averages.waiting - leader.metrics.averages.waiting;
+      policySwapBoardEl.textContent = `Switch candidate: ${leader.algorithm} beats ${algorithm} by ${waitGap.toFixed(2)} average waiting units on this workload. Stay with ${algorithm} only if its response-time or fairness posture is the demo point.`;
+    }
+    return;
+  }
+
+  if (!metrics || !algorithm) {
+    policySwapBoardEl.textContent = 'Run Compare All or one simulation to get a concrete stay-vs-switch scheduler recommendation.';
+    return;
+  }
+
+  if (metrics.averages.response <= metrics.averages.waiting * 0.55) {
+    policySwapBoardEl.textContent = `${algorithm} already looks interaction-friendly on this workload. Compare All only if you want to prove that a simpler policy would still be good enough.`;
+  } else if (metrics.longestWait >= metrics.averages.waiting * 2) {
+    policySwapBoardEl.textContent = `${algorithm} is showing real tail pain. Compare it against SRTF or RR next to see whether preemption reduces the worst wait.`;
+  } else {
+    policySwapBoardEl.textContent = `${algorithm} is serviceable, but Compare All will tell you whether a lower-wait policy exists before you treat this as the final recommendation.`;
+  }
+}
+
 function renderProcessPressureMap(metrics) {
   if (!processPressureMapEl) return;
 
@@ -991,6 +1028,7 @@ function runSimulation() {
   renderGantt(timelineWithOverhead);
   renderMetrics(metrics, selectedAlgorithm, contextSwitchCost);
   noteEl.textContent = buildSimulationInsights(metrics, selectedAlgorithm, contextSwitchCost);
+  renderPolicySwapBoard(metrics, selectedAlgorithm);
   lastSimulation = {
     algorithm: selectedAlgorithm,
     contextSwitchCost,
@@ -1047,6 +1085,7 @@ function compareAllAlgorithms() {
   }));
 
   rows.sort((a, b) => a.metrics.averages.waiting - b.metrics.averages.waiting);
+  lastComparisonRows = rows.map((row) => ({ algorithm: row.algorithm, metrics: row.metrics }));
 
   comparisonBody.innerHTML = rows
     .map(
@@ -1072,6 +1111,7 @@ function compareAllAlgorithms() {
 
   errorText.textContent = `${rows[0].algorithm} currently has the best average waiting time on this workload.`;
   noteEl.textContent = buildComparisonSummary(rows, contextSwitchCost);
+  renderPolicySwapBoard(lastSimulation?.metrics || null, algorithmSelect.value);
 }
 
 function sweepRoundRobinQuantums() {
