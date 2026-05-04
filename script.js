@@ -31,6 +31,7 @@ const deadlineFitBoardEl = document.getElementById('deadline-fit-board');
 const servicePostureEl = document.getElementById('service-posture');
 const decisionBriefEl = document.getElementById('decision-brief');
 const policySwapBoardEl = document.getElementById('policy-swap-board');
+const fairnessBudgetBoardEl = document.getElementById('fairness-budget-board');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
@@ -756,6 +757,44 @@ function renderPolicySwapBoard(metrics = null, algorithm = null) {
   }
 }
 
+function renderFairnessBudgetBoard(metrics = null, algorithm = null) {
+  if (!fairnessBudgetBoardEl) return;
+
+  if (!metrics || !algorithm) {
+    fairnessBudgetBoardEl.textContent = 'Run a simulation to see whether lower averages are being bought with too much queue unfairness.';
+    return;
+  }
+
+  const fairnessRatio = metrics.fairnessSpread / Math.max(1, metrics.averages.waiting || 1);
+  const tailRatio = metrics.longestWait / Math.max(1, metrics.averages.waiting || 1);
+  const currentRow = lastComparisonRows.find((row) => row.algorithm === algorithm);
+  const leader = lastComparisonRows.length
+    ? [...lastComparisonRows].sort((a, b) => a.metrics.averages.waiting - b.metrics.averages.waiting)[0]
+    : null;
+
+  let label = 'Balanced';
+  let cue = `${algorithm} is keeping queue pain close enough to the mean that the fairness trade looks defendable.`;
+  if (fairnessRatio >= 1.35 || tailRatio >= 2.4) {
+    label = 'Expensive';
+    cue = `${algorithm} is extracting its averages from one or two visibly punished jobs. The queue story is harsher than the summary metrics suggest.`;
+  } else if (fairnessRatio >= 0.95 || tailRatio >= 1.9) {
+    label = 'Tight';
+    cue = `${algorithm} still works, but the fairness budget is tight enough that the demo should explicitly name who is paying for the average.`;
+  }
+
+  const comparisonNote =
+    leader && currentRow && leader.algorithm !== currentRow.algorithm
+      ? `${leader.algorithm} currently leads on average wait by ${(currentRow.metrics.averages.waiting - leader.metrics.averages.waiting).toFixed(2)} units. Stay with ${algorithm} only if its response or fairness posture is the actual teaching point.`
+      : 'No better wait leader is visible yet, so the remaining question is whether this fairness spread is acceptable for the service story you want to tell.';
+
+  fairnessBudgetBoardEl.innerHTML = `
+    <p><strong>Fairness budget: ${label}</strong></p>
+    <p><strong>Spread vs mean:</strong> ${metrics.fairnessSpread.toFixed(1)} spread on ${metrics.averages.waiting.toFixed(1)} average wait. <strong>Tail multiplier:</strong> ${tailRatio.toFixed(2)}x.</p>
+    <p><strong>Cue:</strong> ${cue}</p>
+    <p><strong>Decision angle:</strong> ${comparisonNote}</p>
+  `;
+}
+
 function renderProcessPressureMap(metrics) {
   if (!processPressureMapEl) return;
 
@@ -1029,6 +1068,7 @@ function runSimulation() {
   renderMetrics(metrics, selectedAlgorithm, contextSwitchCost);
   noteEl.textContent = buildSimulationInsights(metrics, selectedAlgorithm, contextSwitchCost);
   renderPolicySwapBoard(metrics, selectedAlgorithm);
+  renderFairnessBudgetBoard(metrics, selectedAlgorithm);
   lastSimulation = {
     algorithm: selectedAlgorithm,
     contextSwitchCost,
@@ -1112,6 +1152,7 @@ function compareAllAlgorithms() {
   errorText.textContent = `${rows[0].algorithm} currently has the best average waiting time on this workload.`;
   noteEl.textContent = buildComparisonSummary(rows, contextSwitchCost);
   renderPolicySwapBoard(lastSimulation?.metrics || null, algorithmSelect.value);
+  renderFairnessBudgetBoard(lastSimulation?.metrics || null, algorithmSelect.value);
 }
 
 function sweepRoundRobinQuantums() {
