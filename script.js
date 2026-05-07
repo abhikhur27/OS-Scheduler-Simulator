@@ -44,6 +44,7 @@ const workloadArrivalSpanEl = document.getElementById('workload-arrival-span');
 const workloadBurstMixEl = document.getElementById('workload-burst-mix');
 const workloadShortShareEl = document.getElementById('workload-short-share');
 const workloadSummaryEl = document.getElementById('workload-summary');
+const arrivalPressureBoardEl = document.getElementById('arrival-pressure-board');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
 const presetStarvationBtn = document.getElementById('preset-starvation');
@@ -256,6 +257,35 @@ function renderWorkloadFingerprint() {
   }
 
   workloadSummaryEl.textContent = summary;
+  renderArrivalPressureBoard();
+}
+
+function renderArrivalPressureBoard(metrics = null) {
+  if (!arrivalPressureBoardEl || !processes.length) return;
+
+  const arrivals = processes.map((process) => Number(process.arrival)).filter(Number.isFinite);
+  const bursts = processes.map((process) => Number(process.burst)).filter(Number.isFinite);
+  if (!arrivals.length || !bursts.length) {
+    arrivalPressureBoardEl.textContent = 'Fill in valid arrival and burst values to inspect arrival pressure.';
+    return;
+  }
+
+  const firstWindow = Math.min(...arrivals) + 3;
+  const earlyWork = processes
+    .filter((process) => process.arrival <= firstWindow)
+    .reduce((sum, process) => sum + Number(process.burst || 0), 0);
+  const latestArrival = Math.max(...arrivals);
+  const pressureLabel =
+    earlyWork >= bursts.reduce((sum, burst) => sum + burst, 0) * 0.65
+      ? 'Front-loaded'
+      : latestArrival - Math.min(...arrivals) >= 6
+        ? 'Staggered'
+        : 'Clustered';
+  const simulationCue = metrics
+    ? `Observed longest wait is ${metrics.longestWait.toFixed(1)} time units under the current policy.`
+    : 'Run a simulation to see whether this arrival shape becomes tail pain or stays manageable.';
+
+  arrivalPressureBoardEl.textContent = `Arrival pressure: ${pressureLabel}. Early arrivals carry ${earlyWork.toFixed(1)} burst units inside the first 3 time steps, with the last process arriving at ${latestArrival}. ${simulationCue}`;
 }
 
 function getNextProcessId() {
@@ -584,6 +614,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderDeadlineFitBoard(metrics);
   renderServicePosture(metrics, algorithm);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
+  renderArrivalPressureBoard(metrics);
   renderProcessPressureMap(metrics);
   renderTailRiskBoard(metrics);
   renderCriticalPathBoard(metrics);
