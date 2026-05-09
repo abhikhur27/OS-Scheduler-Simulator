@@ -34,6 +34,7 @@ const policySwapBoardEl = document.getElementById('policy-swap-board');
 const fairnessBudgetBoardEl = document.getElementById('fairness-budget-board');
 const contextSwitchTaxBoardEl = document.getElementById('context-switch-tax-board');
 const processPressureMapEl = document.getElementById('process-pressure-map');
+const queuePromiseBoardEl = document.getElementById('queue-promise-board');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
@@ -618,10 +619,35 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderArrivalPressureBoard(metrics);
   renderContextSwitchTaxBoard(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
+  renderQueuePromiseBoard(metrics, algorithm);
   renderTailRiskBoard(metrics);
   renderCriticalPathBoard(metrics);
   renderDispatchAudit(metrics);
   renderPreemptionWatch(metrics, algorithm);
+}
+
+function renderQueuePromiseBoard(metrics, algorithm) {
+  if (!queuePromiseBoardEl) return;
+
+  if (!metrics?.rows?.length) {
+    queuePromiseBoardEl.textContent = 'Run a simulation to see whether the scheduler is actually keeping the queue promise your product story implies.';
+    return;
+  }
+
+  const fastResponses = metrics.rows.filter((row) => row.response <= 2).length;
+  const harshWaits = metrics.rows.filter((row) => row.waiting >= row.burst * 2).length;
+  const promise =
+    fastResponses === metrics.rows.length
+      ? 'instant-response promise'
+      : harshWaits >= Math.ceil(metrics.rows.length / 3)
+        ? 'fairness-at-risk promise'
+        : 'mixed service promise';
+
+  queuePromiseBoardEl.textContent = `${algorithm} is currently selling an ${promise}: ${fastResponses}/${metrics.rows.length} processes started within 2 time units, while ${harshWaits} waited at least 2x their own burst. ${
+    harshWaits
+      ? 'If this were a user-facing queue, explain who is being sacrificed for the average.'
+      : 'The queue story is consistent enough that the averages are not hiding an obvious betrayal.'
+  }`;
 }
 
 function renderStarvationWatch(metrics) {
