@@ -32,6 +32,7 @@ const servicePostureEl = document.getElementById('service-posture');
 const decisionBriefEl = document.getElementById('decision-brief');
 const policySwapBoardEl = document.getElementById('policy-swap-board');
 const fairnessBudgetBoardEl = document.getElementById('fairness-budget-board');
+const contextSwitchTaxBoardEl = document.getElementById('context-switch-tax-board');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
@@ -615,6 +616,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderServicePosture(metrics, algorithm);
   renderDecisionBrief(metrics, algorithm, contextSwitchCost);
   renderArrivalPressureBoard(metrics);
+  renderContextSwitchTaxBoard(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
   renderTailRiskBoard(metrics);
   renderCriticalPathBoard(metrics);
@@ -823,6 +825,34 @@ function renderFairnessBudgetBoard(metrics = null, algorithm = null) {
     <p><strong>Spread vs mean:</strong> ${metrics.fairnessSpread.toFixed(1)} spread on ${metrics.averages.waiting.toFixed(1)} average wait. <strong>Tail multiplier:</strong> ${tailRatio.toFixed(2)}x.</p>
     <p><strong>Cue:</strong> ${cue}</p>
     <p><strong>Decision angle:</strong> ${comparisonNote}</p>
+  `;
+}
+
+function renderContextSwitchTaxBoard(metrics = null, algorithm = null, contextSwitchCost = 0) {
+  if (!contextSwitchTaxBoardEl) return;
+
+  if (!metrics || !algorithm) {
+    contextSwitchTaxBoardEl.textContent = 'Run a simulation to see whether switching overhead is a rounding error or the real tax on this policy.';
+    return;
+  }
+
+  const makespan = metrics.timeline.at(-1)?.end || 0;
+  const taxShare = makespan ? (metrics.contextSwitchTime / makespan) * 100 : 0;
+  const taxLabel =
+    taxShare >= 18
+      ? 'Heavy tax'
+      : taxShare >= 8
+        ? 'Noticeable tax'
+        : 'Contained tax';
+  const cue =
+    algorithm === 'RR' || algorithm === 'SRTF'
+      ? 'Preemptive behavior is only worth it while the response-time gains outrun the switching burn.'
+      : 'Non-preemptive policies keep the switch bill low, so any remaining pain is mostly queue policy, not dispatch overhead.';
+
+  contextSwitchTaxBoardEl.innerHTML = `
+    <p><strong>Context-switch tax: ${taxLabel}</strong></p>
+    <p><strong>Overhead share:</strong> ${metrics.contextSwitchTime.toFixed(1)} time units, about ${taxShare.toFixed(1)}% of the full schedule.</p>
+    <p><strong>Configured cost:</strong> ${contextSwitchCost} per switch. <strong>Cue:</strong> ${cue}</p>
   `;
 }
 
