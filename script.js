@@ -35,6 +35,7 @@ const fairnessBudgetBoardEl = document.getElementById('fairness-budget-board');
 const contextSwitchTaxBoardEl = document.getElementById('context-switch-tax-board');
 const processPressureMapEl = document.getElementById('process-pressure-map');
 const queuePromiseBoardEl = document.getElementById('queue-promise-board');
+const responsivenessSplitBoardEl = document.getElementById('responsiveness-split-board');
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
@@ -344,6 +345,8 @@ function buildMetrics(baseProcesses, completionTimes, firstStartTimes, timeline)
 
     return {
       id: process.id,
+      arrival: process.arrival,
+      burst: process.burst,
       completion,
       turnaround,
       waiting,
@@ -620,6 +623,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderContextSwitchTaxBoard(metrics, algorithm, contextSwitchCost);
   renderProcessPressureMap(metrics);
   renderQueuePromiseBoard(metrics, algorithm);
+  renderResponsivenessSplitBoard(metrics);
   renderTailRiskBoard(metrics);
   renderCriticalPathBoard(metrics);
   renderDispatchAudit(metrics);
@@ -648,6 +652,34 @@ function renderQueuePromiseBoard(metrics, algorithm) {
       ? 'If this were a user-facing queue, explain who is being sacrificed for the average.'
       : 'The queue story is consistent enough that the averages are not hiding an obvious betrayal.'
   }`;
+}
+
+function renderResponsivenessSplitBoard(metrics) {
+  if (!responsivenessSplitBoardEl) return;
+
+  if (!metrics?.rows?.length) {
+    responsivenessSplitBoardEl.textContent = 'Run a simulation to compare how short and long jobs are sharing response-time pain.';
+    return;
+  }
+
+  const bursts = metrics.rows.map((row) => row.burst).sort((a, b) => a - b);
+  const medianBurst = bursts[Math.floor((bursts.length - 1) / 2)] || 0;
+  const shortJobs = metrics.rows.filter((row) => row.burst <= medianBurst);
+  const longJobs = metrics.rows.filter((row) => row.burst > medianBurst);
+  const average = (rows, key) => (rows.length ? rows.reduce((sum, row) => sum + row[key], 0) / rows.length : 0);
+  const shortResponse = average(shortJobs, 'response');
+  const longResponse = average(longJobs, 'response');
+  const shortWait = average(shortJobs, 'waiting');
+  const longWait = average(longJobs, 'waiting');
+
+  let cue = 'Short and long jobs are sharing responsiveness pressure fairly evenly.';
+  if (shortResponse + 1 < longResponse) {
+    cue = 'Short jobs are being protected first, so the policy is favoring interactive feel over long-job calm.';
+  } else if (longResponse + 1 < shortResponse) {
+    cue = 'Longer jobs are getting the earlier starts, so short interactive work is absorbing more queue pain than it should.';
+  }
+
+  responsivenessSplitBoardEl.textContent = `Responsiveness split: short jobs (burst <= ${medianBurst}) average ${shortResponse.toFixed(1)} response / ${shortWait.toFixed(1)} wait, while longer jobs average ${longResponse.toFixed(1)} response / ${longWait.toFixed(1)} wait. ${cue}`;
 }
 
 function renderStarvationWatch(metrics) {

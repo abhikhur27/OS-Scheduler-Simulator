@@ -21,6 +21,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Policy swap board makes the stay-vs-switch recommendation explicit after a run or compare-all pass.
 - Context-switch tax board reads switching overhead as a schedule share so preemption costs are visible instead of buried in the averages.
 - Queue promise board translates response-time and wait pain into the kind of service promise the scheduler is actually making.
+- Responsiveness split board compares whether short and long jobs are sharing first-response pain evenly or whether one class is subsidizing the other.
 - Per-process metrics:
   - Completion time
   - Turnaround time
