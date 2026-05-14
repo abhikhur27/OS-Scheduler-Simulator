@@ -4,6 +4,7 @@ const randomWorkloadBtn = document.getElementById('random-workload');
 const runButton = document.getElementById('run-sim');
 const exportCsvButton = document.getElementById('export-csv');
 const compareAllButton = document.getElementById('compare-all');
+const copyCompareBriefButton = document.getElementById('copy-compare-brief');
 const sweepRrButton = document.getElementById('sweep-rr');
 const comparisonBody = document.getElementById('comparison-body');
 const compareHistoryEl = document.getElementById('compare-history');
@@ -1274,6 +1275,25 @@ function compareAllAlgorithms() {
   renderFairnessBudgetBoard(lastSimulation?.metrics || null, algorithmSelect.value);
 }
 
+function buildCompareBrief() {
+  if (!lastComparisonRows.length) {
+    return 'Run Compare Workload first to generate a compare brief.';
+  }
+
+  return [
+    'CPU Scheduling Studio Compare Brief',
+    '',
+    `Workload: ${serializeWorkload(processes)}`,
+    `Context switch cost: ${contextSwitchInput.value}`,
+    `Round Robin quantum: ${quantumInput.value}`,
+    `Winner summary: ${compareHistory[0] || 'No winner summary yet.'}`,
+    `Comparison verdict: ${noteEl?.textContent || 'No comparison verdict yet.'}`,
+    '',
+    'Algorithms:',
+    ...lastComparisonRows.map((row, index) => `${index + 1}. ${row.algorithm} | wait ${row.metrics.averages.waiting.toFixed(2)} | response ${row.metrics.averages.response.toFixed(2)} | turnaround ${row.metrics.averages.turnaround.toFixed(2)} | utilization ${row.metrics.utilization.toFixed(1)}%`),
+  ].join('\n');
+}
+
 function sweepRoundRobinQuantums() {
   const validation = validateProcesses();
   if (!validation.ok) {
@@ -1548,6 +1568,14 @@ copyDecisionBriefBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(buildDecisionBrief());
     errorText.textContent = 'Copied a decision brief with the current workload and simulation summary.';
+  } catch (error) {
+    errorText.textContent = 'Clipboard copy failed in this environment.';
+  }
+});
+copyCompareBriefButton?.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(buildCompareBrief());
+    errorText.textContent = 'Copied the compare brief.';
   } catch (error) {
     errorText.textContent = 'Clipboard copy failed in this environment.';
   }
