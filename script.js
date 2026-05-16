@@ -40,6 +40,7 @@ const responsivenessSplitBoardEl = document.getElementById('responsiveness-split
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
+const idleFragmentationBoardEl = document.getElementById('idle-fragmentation-board');
 const preemptionWatchEl = document.getElementById('preemption-watch');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
@@ -628,6 +629,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderTailRiskBoard(metrics);
   renderCriticalPathBoard(metrics);
   renderDispatchAudit(metrics);
+  renderIdleFragmentationBoard(metrics);
   renderPreemptionWatch(metrics, algorithm);
 }
 
@@ -1015,6 +1017,29 @@ function renderDispatchAudit(metrics) {
         : 'low dispatch churn';
 
   dispatchAuditEl.textContent = `Dispatch audit: ${idleSegments.length} idle gap${idleSegments.length === 1 ? '' : 's'}, ${handoffs} process handoff${handoffs === 1 ? '' : 's'}, ${contextSwitches.length} explicit context switch segment${contextSwitches.length === 1 ? '' : 's'}, and shortest run ${shortestRun}. This is ${churn}.`;
+}
+
+function renderIdleFragmentationBoard(metrics) {
+  if (!idleFragmentationBoardEl) return;
+
+  const idleSegments = (metrics.timeline || []).filter((segment) => segment.pid === 'IDLE');
+  if (!idleSegments.length) {
+    idleFragmentationBoardEl.textContent = 'Idle fragmentation: the CPU stayed busy once work was available, so the bigger story is policy choice rather than arrival gaps.';
+    return;
+  }
+
+  const idleDurations = idleSegments.map((segment) => segment.end - segment.start);
+  const totalIdle = idleDurations.reduce((sum, value) => sum + value, 0);
+  const longestIdle = Math.max(...idleDurations);
+  const fragmented = idleSegments.length >= 3 && longestIdle <= totalIdle * 0.55;
+  const label = fragmented ? 'Fragmented' : idleSegments.length === 1 ? 'Single-gap' : 'Chunked';
+  const cue = fragmented
+    ? 'Arrivals are stranding the CPU in several short pockets, so workload timing is part of the performance story.'
+    : idleSegments.length === 1
+      ? 'Most idle time sits in one clean block, so the schedule is mostly waiting for work rather than mismanaging it.'
+      : 'Idle time exists in a few larger blocks, which suggests bursty arrivals more than scheduler churn.';
+
+  idleFragmentationBoardEl.textContent = `Idle fragmentation: ${label}. ${idleSegments.length} idle gap${idleSegments.length === 1 ? '' : 's'} consume ${totalIdle.toFixed(1)} time units, with the longest gap at ${longestIdle.toFixed(1)}. ${cue}`;
 }
 
 function renderPreemptionWatch(metrics, algorithm) {
