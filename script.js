@@ -40,6 +40,7 @@ const responsivenessSplitBoardEl = document.getElementById('responsiveness-split
 const tailRiskBoardEl = document.getElementById('tail-risk-board');
 const criticalPathBoardEl = document.getElementById('critical-path-board');
 const dispatchAuditEl = document.getElementById('dispatch-audit');
+const scheduleRhythmBoardEl = document.getElementById('schedule-rhythm-board');
 const idleFragmentationBoardEl = document.getElementById('idle-fragmentation-board');
 const preemptionWatchEl = document.getElementById('preemption-watch');
 const metricsBody = document.getElementById('metrics-body');
@@ -629,6 +630,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderTailRiskBoard(metrics);
   renderCriticalPathBoard(metrics);
   renderDispatchAudit(metrics);
+  renderScheduleRhythmBoard(metrics, algorithm);
   renderIdleFragmentationBoard(metrics);
   renderPreemptionWatch(metrics, algorithm);
 }
@@ -1017,6 +1019,35 @@ function renderDispatchAudit(metrics) {
         : 'low dispatch churn';
 
   dispatchAuditEl.textContent = `Dispatch audit: ${idleSegments.length} idle gap${idleSegments.length === 1 ? '' : 's'}, ${handoffs} process handoff${handoffs === 1 ? '' : 's'}, ${contextSwitches.length} explicit context switch segment${contextSwitches.length === 1 ? '' : 's'}, and shortest run ${shortestRun}. This is ${churn}.`;
+}
+
+function renderScheduleRhythmBoard(metrics, algorithm) {
+  if (!scheduleRhythmBoardEl) return;
+
+  const productiveSegments = (metrics.timeline || []).filter((segment) => segment.pid !== 'IDLE' && segment.pid !== 'CS');
+  if (!productiveSegments.length) {
+    scheduleRhythmBoardEl.textContent = 'Run a simulation to see whether the timeline behaves like long batches, balanced slices, or choppy handoffs.';
+    return;
+  }
+
+  const productiveTime = productiveSegments.reduce((sum, segment) => sum + (segment.end - segment.start), 0);
+  const averageRun = productiveTime / productiveSegments.length;
+  const handoffs = Math.max(0, productiveSegments.length - 1);
+  const fragmentation = productiveSegments.length / Math.max(1, processes.length);
+  const rhythm =
+    averageRun >= 4
+      ? 'batch-heavy'
+      : averageRun >= 2
+        ? 'mixed-slice'
+        : 'choppy-preemptive';
+  const cue =
+    rhythm === 'batch-heavy'
+      ? `${algorithm} is letting processes run in longer uninterrupted blocks, which is easier on overhead but harsher on short-job responsiveness.`
+      : rhythm === 'mixed-slice'
+        ? `${algorithm} is trading moderate handoff churn for a more balanced visible rhythm across the queue.`
+        : `${algorithm} is slicing aggressively enough that the timeline is now dominated by fairness and response posture rather than long uninterrupted throughput runs.`;
+
+  scheduleRhythmBoardEl.textContent = `Schedule rhythm: ${rhythm} | average productive run ${averageRun.toFixed(1)} ticks | ${handoffs} handoff${handoffs === 1 ? '' : 's'} across ${productiveSegments.length} CPU slice${productiveSegments.length === 1 ? '' : 's'} (fragmentation ${fragmentation.toFixed(1)}x jobs). ${cue}`;
 }
 
 function renderIdleFragmentationBoard(metrics) {

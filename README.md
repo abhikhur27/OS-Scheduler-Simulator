@@ -35,6 +35,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Deadline-fit board that estimates which jobs miss soft interactive or batch deadlines under the current scheduler.
 - Process pressure map classifies each process as interactive-friendly, batch-heavy, balanced, or at-risk after a run.
 - Tail-risk board identifies which process absorbs the worst wait pain versus the worst slowdown pain.
+- Schedule rhythm board classifies whether the visible timeline behaves like long batches, balanced slices, or choppy preemption.
 - Idle fragmentation board shows whether CPU idle time is one clean waiting block or a fragmented arrival-pattern problem.
 - Preemption watch calls out when the workload actually wants interrupt-friendly scheduling rather than a simpler non-preemptive baseline.
 - Round Robin quantum coach that turns the sweep table into an explicit tuning recommendation.
