@@ -51,6 +51,7 @@ const workloadBurstMixEl = document.getElementById('workload-burst-mix');
 const workloadShortShareEl = document.getElementById('workload-short-share');
 const workloadSummaryEl = document.getElementById('workload-summary');
 const arrivalPressureBoardEl = document.getElementById('arrival-pressure-board');
+const waitDebtBoardEl = document.getElementById('wait-debt-board');
 const presetConvoyBtn = document.getElementById('preset-convoy');
 const presetInteractiveBtn = document.getElementById('preset-interactive');
 const presetStarvationBtn = document.getElementById('preset-starvation');
@@ -633,6 +634,7 @@ function renderMetrics(metrics, algorithm, contextSwitchCost) {
   renderScheduleRhythmBoard(metrics, algorithm);
   renderIdleFragmentationBoard(metrics);
   renderPreemptionWatch(metrics, algorithm);
+  renderWaitDebtBoard(metrics);
 }
 
 function renderQueuePromiseBoard(metrics, algorithm) {
@@ -1093,6 +1095,31 @@ function renderPreemptionWatch(metrics, algorithm) {
     : punishedLongJob
       ? 'Preemption watch: a long job is suffering, but the bigger issue is fairness stretch rather than pure response latency. Tune policy choice around slowdown, not just preemption.'
       : 'Preemption watch: this workload is not strongly demanding preemption right now. Non-preemptive baselines remain defensible.';
+}
+
+function renderWaitDebtBoard(metrics) {
+  if (!waitDebtBoardEl) return;
+
+  if (!metrics?.rows?.length) {
+    waitDebtBoardEl.textContent = 'Run a simulation to see which process or job class is quietly absorbing the workload\'s waiting debt.';
+    return;
+  }
+
+  const rows = [...metrics.rows].sort((left, right) => right.waiting - left.waiting);
+  const totalWait = rows.reduce((sum, row) => sum + row.waiting, 0);
+  const topRow = rows[0];
+  const averageBurst = rows.reduce((sum, row) => sum + row.burst, 0) / rows.length;
+  const shortWaitShare = rows
+    .filter((row) => row.burst <= averageBurst)
+    .reduce((sum, row) => sum + row.waiting, 0) / Math.max(1, totalWait);
+  const longWaitShare = rows
+    .filter((row) => row.burst > averageBurst)
+    .reduce((sum, row) => sum + row.waiting, 0) / Math.max(1, totalWait);
+  const debtClass = shortWaitShare > longWaitShare ? 'short jobs' : 'long jobs';
+  const debtShare = Math.round(Math.max(shortWaitShare, longWaitShare) * 100);
+  const topShare = Math.round((topRow.waiting / Math.max(1, totalWait)) * 100);
+
+  waitDebtBoardEl.textContent = `Wait debt board: ${topRow.id} is carrying the heaviest single delay burden at ${topRow.waiting.toFixed(1)} time units (${topShare}% of all waiting). Overall, ${debtClass} are absorbing about ${debtShare}% of the queue's waiting debt, so the average wait is hiding who is actually subsidizing this policy.`;
 }
 
 function buildSimulationInsights(metrics, algorithm, contextSwitchCost) {
