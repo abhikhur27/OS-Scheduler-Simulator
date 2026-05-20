@@ -5,6 +5,7 @@ const runButton = document.getElementById('run-sim');
 const exportCsvButton = document.getElementById('export-csv');
 const compareAllButton = document.getElementById('compare-all');
 const copyCompareBriefButton = document.getElementById('copy-compare-brief');
+const exportCompareTapeButton = document.getElementById('export-compare-tape');
 const sweepRrButton = document.getElementById('sweep-rr');
 const comparisonBody = document.getElementById('comparison-body');
 const compareHistoryEl = document.getElementById('compare-history');
@@ -1472,6 +1473,29 @@ function exportSimulationCsv() {
   errorText.textContent = 'Exported simulation CSV.';
 }
 
+function exportCompareTape() {
+  if (!compareHistory.length && !lastComparisonResults.length) {
+    errorText.textContent = 'Run Compare Workload before exporting the compare tape.';
+    return;
+  }
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    workload: processes,
+    latestComparison: lastComparisonResults,
+    compareHistory,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'cpu-scheduling-compare-tape.json';
+  link.click();
+  URL.revokeObjectURL(url);
+  errorText.textContent = 'Exported compare tape with the latest workload comparison and session history.';
+}
+
 function buildDecisionBrief() {
   const algorithm = algorithmSelect.value;
   const lines = [
@@ -1663,6 +1687,7 @@ copyCompareBriefButton?.addEventListener('click', async () => {
     errorText.textContent = 'Clipboard copy failed in this environment.';
   }
 });
+exportCompareTapeButton?.addEventListener('click', exportCompareTape);
 importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
 importWorkloadFile.addEventListener('change', importWorkload);
 compareAllButton.addEventListener('click', compareAllAlgorithms);
