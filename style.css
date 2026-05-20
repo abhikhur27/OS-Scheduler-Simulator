@@ -262,6 +262,27 @@ select {
   margin-top: 0.95rem;
 }
 
+/* Portfolio clarity mode: preserve core metrics/tables, remove verbose coaching boards. */
+#sla-board,
+#deadline-fit-board,
+#service-posture,
+#decision-brief,
+#policy-swap-board,
+#fairness-budget-board,
+#context-switch-tax-board,
+#process-pressure-map,
+#queue-promise-board,
+#responsiveness-split-board,
+#tail-risk-board,
+#critical-path-board,
+#dispatch-audit,
+#schedule-rhythm-board,
+#idle-fragmentation-board,
+#preemption-watch,
+#wait-debt-board {
+  display: none;
+}
+
 @media (max-width: 950px) {
   .layout {
     grid-template-columns: 1fr;
