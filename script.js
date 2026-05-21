@@ -62,6 +62,8 @@ const copyDecisionBriefBtn = document.getElementById('copy-decision-brief');
 const exportWorkloadBtn = document.getElementById('export-workload');
 const importWorkloadBtn = document.getElementById('import-workload');
 const importWorkloadFile = document.getElementById('import-workload-file');
+const importWorkloadCsvBtn = document.getElementById('import-workload-csv');
+const importWorkloadCsvFile = document.getElementById('import-workload-csv-file');
 
 const algorithmNotes = {
   FCFS: 'FCFS is simple and fair by arrival order, but long jobs can significantly delay short jobs.',
@@ -1638,6 +1640,58 @@ function importWorkload(event) {
   reader.readAsText(file);
 }
 
+function importWorkloadCsv(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const lines = String(reader.result || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (lines.length < 2) {
+        throw new Error('CSV needs a header row plus at least one process row.');
+      }
+
+      const headers = lines[0].split(',').map((value) => value.trim().toLowerCase());
+      const idIndex = headers.indexOf('pid');
+      const arrivalIndex = headers.indexOf('arrival');
+      const burstIndex = headers.indexOf('burst');
+
+      if (idIndex === -1 || arrivalIndex === -1 || burstIndex === -1) {
+        throw new Error('CSV headers must include pid, arrival, and burst.');
+      }
+
+      processes = lines.slice(1).map((line, index) => {
+        const cells = line.split(',').map((value) => value.trim());
+        return {
+          id: cells[idIndex] || `P${index + 1}`,
+          arrival: Number(cells[arrivalIndex]),
+          burst: Number(cells[burstIndex]),
+        };
+      }).filter((row) => Number.isFinite(row.arrival) && Number.isFinite(row.burst) && row.burst > 0);
+
+      if (!processes.length) {
+        throw new Error('No valid process rows were found in the CSV.');
+      }
+
+      processes.sort(compareByArrivalThenId);
+      renderProcessTable();
+      runSimulation();
+      errorText.textContent = 'Imported workload CSV.';
+    } catch (error) {
+      errorText.textContent = error.message || 'Could not import that workload CSV.';
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
 function isEditableTarget(target) {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
@@ -1690,6 +1744,8 @@ copyCompareBriefButton?.addEventListener('click', async () => {
 exportCompareTapeButton?.addEventListener('click', exportCompareTape);
 importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
 importWorkloadFile.addEventListener('change', importWorkload);
+importWorkloadCsvBtn.addEventListener('click', () => importWorkloadCsvFile.click());
+importWorkloadCsvFile.addEventListener('change', importWorkloadCsv);
 compareAllButton.addEventListener('click', compareAllAlgorithms);
 sweepRrButton.addEventListener('click', sweepRoundRobinQuantums);
 

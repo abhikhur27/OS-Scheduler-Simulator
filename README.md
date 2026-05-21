@@ -12,6 +12,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - Round Robin (configurable quantum)
 - Timeline (Gantt chart) with idle segments included.
 - Workload import/export as JSON for reproducible comparisons.
+- Workload CSV import for quick handoff from spreadsheet-style process tables.
 - Copy Decision Brief turns the current workload fingerprint, tuned scheduler choice, and per-process outcome summary into a clipboard-ready note.
 - Compare-all benchmark table across FCFS, SJF, SRTF, and RR for the same workload.
 - Added a starvation-watch workload preset for contrasting long-running jobs against steady short arrivals.
@@ -87,6 +88,12 @@ Then open `http://localhost:8000`.
 - No server/runtime dependency.
 - Relative static assets only.
 - Deploy by publishing repository root via GitHub Pages.
+
+## Portfolio Positioning
+
+- Honest label: browser-based scheduling simulator for OS concepts.
+- Best demo move: compare one workload across two policies rather than narrating every board on screen.
+- Current direction: protect clarity and metric trust before adding more scheduler meta-analysis.
 
 ## Future Improvements
 
