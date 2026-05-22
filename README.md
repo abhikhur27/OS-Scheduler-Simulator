@@ -67,6 +67,16 @@ flowchart LR
 3. For Round Robin, set a quantum.
 4. Click `Run Simulation`.
 
+## CSV Import Shape
+
+For spreadsheet handoffs, CSV import works best with columns in this order:
+
+- `pid`
+- `arrival`
+- `burst`
+
+Header names are preferred, but the core expectation is still one process per row with numeric arrival and burst values.
+
 ## Local Run
 
 ```bash
