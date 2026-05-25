@@ -93,6 +93,12 @@ Then open `http://localhost:8000`.
 4. Copy the decision brief for a reproducible scheduler recommendation.
 5. Read the tail-risk board so the demo names who actually paid for the average metric.
 
+## Reproducible Review Flow
+
+- Use the shareable URL when the current algorithm, quantum, context-switch cost, and workload should reopen exactly.
+- Use `Copy Decision Brief` when the output needs to move into notes, Slack, or a design review.
+- Use workload export plus compare-tape export when the same workload should be revisited later instead of re-entered by hand.
+
 ## GitHub Pages Compatibility
 
 - No server/runtime dependency.
