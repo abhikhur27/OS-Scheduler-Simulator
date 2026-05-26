@@ -116,3 +116,13 @@ Then open `http://localhost:8000`.
 - Priority scheduling and multilevel feedback queue.
 - Context-switch overhead visualization.
 - Add per-segment hover detail for timeline slices and context-switch intervals.
+
+## Verification Matrix
+
+Before release, validate these three workload types:
+
+1. Convoy-heavy batch: long burst first, several short bursts later.
+2. Interactive-biased: many short bursts with staggered arrivals.
+3. Mixed lane: one long job plus periodic short arrivals.
+
+Capture one `Compare All` output per workload so policy tradeoffs are documented with evidence, not just averages.
