@@ -1476,7 +1476,7 @@ function exportSimulationCsv() {
 }
 
 function exportCompareTape() {
-  if (!compareHistory.length && !lastComparisonResults.length) {
+  if (!compareHistory.length && !lastComparisonRows.length) {
     errorText.textContent = 'Run Compare Workload before exporting the compare tape.';
     return;
   }
@@ -1484,7 +1484,7 @@ function exportCompareTape() {
   const payload = {
     exportedAt: new Date().toISOString(),
     workload: processes,
-    latestComparison: lastComparisonResults,
+    latestComparison: lastComparisonRows,
     compareHistory,
   };
 
