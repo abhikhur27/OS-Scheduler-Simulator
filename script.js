@@ -1780,6 +1780,12 @@ document.addEventListener('keydown', (event) => {
     return;
   }
 
+  if (key === 'c') {
+    event.preventDefault();
+    compareAllAlgorithms();
+    return;
+  }
+
   if (event.key === '1') {
     event.preventDefault();
     loadPresetWorkload('convoy');
