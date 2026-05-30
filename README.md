@@ -127,3 +127,9 @@ Before release, validate these three workload types:
 3. Mixed lane: one long job plus periodic short arrivals.
 
 Capture one `Compare All` output per workload so policy tradeoffs are documented with evidence, not just averages.
+
+## Quick Verification Command
+
+Run this syntax check before sharing updates:
+- node --check script.js
+
