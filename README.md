@@ -1,4 +1,4 @@
-# CPU Scheduling Studio
+# CPU Scheduling Browser Demo
 
 Interactive CPU scheduling simulator focused on correctness, algorithm comparison, and transparent metric reporting.
 
