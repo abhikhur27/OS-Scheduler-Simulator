@@ -39,6 +39,12 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Tail-risk board identifies which process absorbs the worst wait pain versus the worst slowdown pain.
 - Schedule rhythm board classifies whether the visible timeline behaves like long batches, balanced slices, or choppy preemption.
 
+## Demo Flow
+
+1. Load the starvation or deadline preset.
+2. Run `Compare All` before defending any one algorithm.
+3. Use the fairness and queue-promise boards to explain why the best average is not always the best operating posture.
+
 ## Platform honesty
 
 - Project type: Browser scheduling visualizer
