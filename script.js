@@ -1807,5 +1807,11 @@ document.addEventListener('keydown', (event) => {
   if (event.key === '4') {
     event.preventDefault();
     loadPresetWorkload('deadline');
+    return;
+  }
+
+  if (key === 'q') {
+    event.preventDefault();
+    sweepRoundRobinQuantums();
   }
 });
