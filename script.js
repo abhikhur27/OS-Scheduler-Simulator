@@ -7,6 +7,7 @@ const compareAllButton = document.getElementById('compare-all');
 const copyCompareBriefButton = document.getElementById('copy-compare-brief');
 const exportCompareTapeButton = document.getElementById('export-compare-tape');
 const sweepRrButton = document.getElementById('sweep-rr');
+const applyBestRrButton = document.getElementById('apply-best-rr');
 const comparisonBody = document.getElementById('comparison-body');
 const compareHistoryEl = document.getElementById('compare-history');
 const rrSweepBody = document.getElementById('rr-sweep-body');
@@ -82,6 +83,7 @@ let processes = [
 let lastSimulation = null;
 let compareHistory = [];
 let lastComparisonRows = [];
+let lastRrSweepRows = [];
 
 function serializeWorkload(processList) {
   return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}`).join(';');
@@ -1380,6 +1382,16 @@ function buildCompareBrief() {
   ].join('\n');
 }
 
+function computeRoundRobinSweepRows(processList, contextSwitchCost, maxQuantum = 6) {
+  return Array.from({ length: maxQuantum }, (_, index) => {
+    const quantum = index + 1;
+    return {
+      quantum,
+      metrics: runAlgorithmForComparison(processList, 'RR', quantum, contextSwitchCost),
+    };
+  });
+}
+
 function sweepRoundRobinQuantums() {
   const validation = validateProcesses();
   if (!validation.ok) {
@@ -1393,19 +1405,21 @@ function sweepRoundRobinQuantums() {
     return;
   }
 
-  const rows = Array.from({ length: 6 }, (_, index) => {
-    const quantum = index + 1;
-    return {
-      quantum,
-      metrics: runAlgorithmForComparison(validation.processes, 'RR', quantum, contextSwitchCost),
-    };
-  });
+  const rows = computeRoundRobinSweepRows(validation.processes, contextSwitchCost);
+  lastRrSweepRows = rows.map((row) => ({
+    quantum: row.quantum,
+    metrics: row.metrics,
+  }));
+  const bestWaitRow = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best));
+  const bestResponseRow = rows.reduce((best, row) => (row.metrics.averages.response < best.metrics.averages.response ? row : best));
 
   if (rrSweepBody) {
     rrSweepBody.innerHTML = rows
       .map(({ quantum, metrics }) => {
-        const bestWait = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best)).quantum;
-        const note = quantum === bestWait ? ' <- lowest wait' : '';
+        const noteParts = [];
+        if (quantum === bestWaitRow.quantum) noteParts.push('lowest wait');
+        if (quantum === bestResponseRow.quantum) noteParts.push('best response');
+        const note = noteParts.length ? ` <- ${noteParts.join(' + ')}` : '';
         return `
           <tr>
             <td>${quantum}${note}</td>
@@ -1419,8 +1433,6 @@ function sweepRoundRobinQuantums() {
       .join('');
   }
 
-  const bestWaitRow = rows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best));
-  const bestResponseRow = rows.reduce((best, row) => (row.metrics.averages.response < best.metrics.averages.response ? row : best));
   noteEl.textContent = `RR sweep: quantum ${bestWaitRow.quantum} minimizes waiting, while quantum ${bestResponseRow.quantum} responds fastest under the current context-switch cost.`;
   if (rrCoachEl) {
     const overheadHeavy = rows.filter((row) => row.metrics.contextSwitchTime >= row.metrics.averages.waiting * 0.7);
@@ -1434,6 +1446,36 @@ function sweepRoundRobinQuantums() {
     rrCoachEl.textContent = `${coach}${overheadNote}`;
   }
   errorText.textContent = 'Round Robin quantum sweep complete.';
+}
+
+function applyBestRoundRobinQuantum() {
+  const validation = validateProcesses();
+  if (!validation.ok) {
+    errorText.textContent = validation.message;
+    return;
+  }
+
+  const contextSwitchCost = Number.parseInt(contextSwitchInput.value, 10);
+  if (!Number.isInteger(contextSwitchCost) || contextSwitchCost < 0) {
+    errorText.textContent = 'Context switch cost must be an integer >= 0.';
+    return;
+  }
+
+  if (!lastRrSweepRows.length) {
+    lastRrSweepRows = computeRoundRobinSweepRows(validation.processes, contextSwitchCost);
+  }
+
+  const bestWaitRow = lastRrSweepRows.reduce((best, row) => (row.metrics.averages.waiting < best.metrics.averages.waiting ? row : best));
+  const bestResponseRow = lastRrSweepRows.reduce((best, row) => (row.metrics.averages.response < best.metrics.averages.response ? row : best));
+  algorithmSelect.value = 'RR';
+  quantumInput.value = String(bestWaitRow.quantum);
+  updateQuantumVisibility();
+  syncUrlState();
+  runSimulation();
+  errorText.textContent =
+    bestWaitRow.quantum === bestResponseRow.quantum
+      ? `Applied RR quantum ${bestWaitRow.quantum}; it currently wins both waiting time and response time.`
+      : `Applied RR quantum ${bestWaitRow.quantum} for the best waiting time. Quantum ${bestResponseRow.quantum} is still the fastest responder.`;
 }
 
 function exportSimulationCsv() {
@@ -1748,6 +1790,7 @@ importWorkloadCsvBtn.addEventListener('click', () => importWorkloadCsvFile.click
 importWorkloadCsvFile.addEventListener('change', importWorkloadCsv);
 compareAllButton.addEventListener('click', compareAllAlgorithms);
 sweepRrButton.addEventListener('click', sweepRoundRobinQuantums);
+applyBestRrButton?.addEventListener('click', applyBestRoundRobinQuantum);
 
 hydrateFromUrlState();
 renderProcessTable();

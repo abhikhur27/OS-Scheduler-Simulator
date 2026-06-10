@@ -16,6 +16,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Copy Decision Brief turns the current workload fingerprint, tuned scheduler choice, and per-process outcome summary into a clipboard-ready note.
 - Compare-all benchmark table across FCFS, SJF, SRTF, and RR for the same workload.
 - Keyboard shortcut `C` now runs a compare-all benchmark for the current workload.
+- Apply Best Quantum takes the latest Round Robin sweep and immediately reruns the workload with the lowest-wait quantum.
 - Added a starvation-watch workload preset for contrasting long-running jobs against steady short arrivals.
 - Workload fingerprint panel that estimates convoy risk, burst skew, and the likely best scheduling family before a run.
 - Automatic workload coach that flags convoy pressure, response-time tradeoffs, and context-switch overhead after each run.
