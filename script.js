@@ -47,6 +47,7 @@ const idleFragmentationBoardEl = document.getElementById('idle-fragmentation-boa
 const preemptionWatchEl = document.getElementById('preemption-watch');
 const metricsBody = document.getElementById('metrics-body');
 const ganttEl = document.getElementById('gantt');
+const ganttInspectorEl = document.getElementById('gantt-inspector');
 const noteEl = document.getElementById('algorithm-note');
 const workloadArrivalSpanEl = document.getElementById('workload-arrival-span');
 const workloadBurstMixEl = document.getElementById('workload-burst-mix');
@@ -576,6 +577,9 @@ function colorForProcess(pid, colorMap) {
 function renderGantt(timeline) {
   if (!timeline.length) {
     ganttEl.innerHTML = '<p class="empty">No timeline generated.</p>';
+    if (ganttInspectorEl) {
+      ganttInspectorEl.textContent = 'Run a simulation, then hover or focus a timeline segment to inspect its dispatch window.';
+    }
     return;
   }
 
@@ -586,7 +590,16 @@ function renderGantt(timeline) {
       const color = colorForProcess(segment.pid, colorMap);
 
       return `
-        <div class="gantt-segment" data-id="${segment.pid}" style="flex-grow: ${duration}; background: ${color};">
+        <div
+          class="gantt-segment"
+          data-id="${segment.pid}"
+          data-start="${segment.start}"
+          data-end="${segment.end}"
+          data-duration="${duration}"
+          tabindex="0"
+          aria-label="${segment.pid} from ${segment.start} to ${segment.end} for ${duration} time unit${duration === 1 ? '' : 's'}"
+          style="flex-grow: ${duration}; background: ${color};"
+        >
           <span class="pid">${segment.pid}</span>
           <span class="times">${segment.start} -> ${segment.end}</span>
         </div>
@@ -595,6 +608,27 @@ function renderGantt(timeline) {
     .join('');
 
   ganttEl.innerHTML = html;
+
+  const inspectSegment = (segmentEl) => {
+    if (!ganttInspectorEl) return;
+
+    const pid = segmentEl.dataset.id || 'unknown';
+    const start = Number(segmentEl.dataset.start || 0);
+    const end = Number(segmentEl.dataset.end || 0);
+    const duration = Number(segmentEl.dataset.duration || 0);
+    const segmentType =
+      pid === 'IDLE' ? 'idle gap' : pid === 'CS' ? 'context-switch overhead' : 'process run';
+    ganttInspectorEl.textContent = `${pid} occupies ${start} -> ${end} (${duration} time unit${duration === 1 ? '' : 's'}) as a ${segmentType}.`;
+  };
+
+  ganttEl.querySelectorAll('.gantt-segment').forEach((segmentEl) => {
+    segmentEl.addEventListener('mouseenter', () => inspectSegment(segmentEl));
+    segmentEl.addEventListener('focus', () => inspectSegment(segmentEl));
+  });
+
+  if (ganttInspectorEl) {
+    ganttInspectorEl.textContent = 'Hover or focus a timeline segment to inspect its dispatch window and duration.';
+  }
 }
 
 function renderMetrics(metrics, algorithm, contextSwitchCost) {

@@ -11,6 +11,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - Shortest Remaining Time First (SRTF, preemptive)
   - Round Robin (configurable quantum)
 - Timeline (Gantt chart) with idle segments included.
+- Inspectable Gantt timeline so each process slice, idle gap, and context-switch segment can be read directly without guessing from color alone.
 - Workload import/export as JSON for reproducible comparisons.
 - Workload CSV import for quick handoff from spreadsheet-style process tables.
 - Copy Decision Brief turns the current workload fingerprint, tuned scheduler choice, and per-process outcome summary into a clipboard-ready note.
