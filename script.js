@@ -70,6 +70,7 @@ const importWorkloadCsvFile = document.getElementById('import-workload-csv-file'
 const algorithmNotes = {
   FCFS: 'FCFS is simple and fair by arrival order, but long jobs can significantly delay short jobs.',
   SJF: 'SJF minimizes average waiting in many workloads, but requires burst-time knowledge and can starve long jobs.',
+  HRRN: 'HRRN boosts waiting jobs by response ratio, giving long-starved work a fairer turn without preemption.',
   SRTF: 'SRTF preempts running tasks when shorter work arrives, improving responsiveness for short tasks.',
   RR: 'Round Robin shares CPU time with fixed quanta to improve interactivity at the cost of context-switch overhead.',
 };
@@ -458,6 +459,44 @@ function simulateSJF(baseProcesses) {
     const process = ready.shift();
     firstStartTimes[process.id] = time;
 
+    const end = time + process.burst;
+    pushSegment(timeline, process.id, time, end);
+    completionTimes[process.id] = end;
+    time = end;
+  }
+
+  return { timeline, completionTimes, firstStartTimes };
+}
+
+function simulateHRRN(baseProcesses) {
+  const pending = [...baseProcesses].sort(compareByArrivalThenId);
+  const ready = [];
+  const timeline = [];
+  const completionTimes = {};
+  const firstStartTimes = {};
+  let time = 0;
+
+  while (pending.length || ready.length) {
+    while (pending.length && pending[0].arrival <= time) {
+      ready.push(pending.shift());
+    }
+
+    if (!ready.length) {
+      const nextArrival = pending[0].arrival;
+      pushSegment(timeline, 'IDLE', time, nextArrival);
+      time = nextArrival;
+      continue;
+    }
+
+    ready.sort((a, b) => {
+      const aRatio = (time - a.arrival + a.burst) / a.burst;
+      const bRatio = (time - b.arrival + b.burst) / b.burst;
+      if (aRatio !== bRatio) return bRatio - aRatio;
+      return compareByArrivalThenId(a, b);
+    });
+
+    const process = ready.shift();
+    firstStartTimes[process.id] = time;
     const end = time + process.burst;
     pushSegment(timeline, process.id, time, end);
     completionTimes[process.id] = end;
@@ -1289,6 +1328,8 @@ function runSimulation() {
     result = simulateRR(validation.processes, quantum);
   } else if (selectedAlgorithm === 'SJF') {
     result = simulateSJF(validation.processes);
+  } else if (selectedAlgorithm === 'HRRN') {
+    result = simulateHRRN(validation.processes);
   } else if (selectedAlgorithm === 'SRTF') {
     result = simulateSRTF(validation.processes);
   } else {
@@ -1326,6 +1367,8 @@ function runAlgorithmForComparison(processList, algorithm, quantum, contextSwitc
     result = simulateRR(processList, quantum);
   } else if (algorithm === 'SJF') {
     result = simulateSJF(processList);
+  } else if (algorithm === 'HRRN') {
+    result = simulateHRRN(processList);
   } else if (algorithm === 'SRTF') {
     result = simulateSRTF(processList);
   } else {
@@ -1360,7 +1403,7 @@ function compareAllAlgorithms() {
     return;
   }
 
-  const algorithms = ['FCFS', 'SJF', 'SRTF', 'RR'];
+  const algorithms = ['FCFS', 'SJF', 'HRRN', 'SRTF', 'RR'];
   const rows = algorithms.map((algorithm) => ({
     algorithm,
     metrics: runAlgorithmForComparison(validation.processes, algorithm, quantum, contextSwitchCost),

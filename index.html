@@ -6,7 +6,7 @@
   <title>CPU Scheduling Browser Demo</title>
   <meta name="description" content="Interactive browser demo for comparing CPU scheduling algorithms with timeline playback and transparent metrics.">
   <meta property="og:title" content="CPU Scheduling Browser Demo">
-  <meta property="og:description" content="Compare FCFS, SJF, SRTF, and Round Robin in an honest browser scheduling demo.">
+  <meta property="og:description" content="Compare FCFS, SJF, HRRN, SRTF, and Round Robin in an honest browser scheduling demo.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://abhikhur27.github.io/OS-Scheduler-Simulator/">
   <meta name="theme-color" content="#121519">
@@ -92,6 +92,7 @@
           <select id="algorithm">
             <option value="FCFS">First Come, First Served</option>
             <option value="SJF">Shortest Job First (Non-preemptive)</option>
+            <option value="HRRN">Highest Response Ratio Next</option>
             <option value="SRTF">Shortest Remaining Time First</option>
             <option value="RR">Round Robin</option>
           </select>

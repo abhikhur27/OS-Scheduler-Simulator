@@ -8,6 +8,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Algorithms:
   - First Come, First Served (FCFS)
   - Shortest Job First (SJF, non-preemptive)
+  - Highest Response Ratio Next (HRRN, non-preemptive)
   - Shortest Remaining Time First (SRTF, preemptive)
   - Round Robin (configurable quantum)
 - Timeline (Gantt chart) with idle segments included.
@@ -23,6 +24,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Automatic workload coach that flags convoy pressure, response-time tradeoffs, and context-switch overhead after each run.
 - Service posture board classifies whether the current scheduler is behaving more like an interactive, batch-heavy, or mixed policy.
 - Policy swap board makes the stay-vs-switch recommendation explicit after a run or compare-all pass.
+- HRRN is now available as a non-preemptive fairness baseline when SJF looks too starvation-prone but full preemption would be overkill.
 - Context-switch tax board reads switching overhead as a schedule share so preemption costs are visible instead of buried in the averages.
 - Queue promise board translates response-time and wait pain into the kind of service promise the scheduler is actually making.
 - Responsiveness split board compares whether short and long jobs are sharing first-response pain evenly or whether one class is subsidizing the other.
@@ -44,7 +46,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 ## Demo Flow
 
 1. Load the starvation or deadline preset.
-2. Run `Compare All` before defending any one algorithm.
+2. Run `Compare All` before defending any one algorithm, especially when HRRN and SJF separate fairness from raw waiting-time wins.
 3. Use the fairness and queue-promise boards to explain why the best average is not always the best operating posture.
 
 ## Platform honesty
