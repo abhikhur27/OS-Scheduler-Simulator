@@ -71,6 +71,7 @@ const algorithmNotes = {
   FCFS: 'FCFS is simple and fair by arrival order, but long jobs can significantly delay short jobs.',
   SJF: 'SJF minimizes average waiting in many workloads, but requires burst-time knowledge and can starve long jobs.',
   HRRN: 'HRRN boosts waiting jobs by response ratio, giving long-starved work a fairer turn without preemption.',
+  PRI: 'Priority with Aging favors urgent work first, but gradually boosts waiting jobs so static priority does not turn into indefinite starvation.',
   SRTF: 'SRTF preempts running tasks when shorter work arrives, improving responsiveness for short tasks.',
   RR: 'Round Robin shares CPU time with fixed quanta to improve interactivity at the cost of context-switch overhead.',
 };
@@ -78,9 +79,9 @@ const algorithmNotes = {
 const colorPalette = ['#0f766e', '#0284c7', '#7c3aed', '#16a34a', '#ca8a04', '#e11d48', '#0891b2', '#4f46e5'];
 
 let processes = [
-  { id: 'P1', arrival: 0, burst: 6 },
-  { id: 'P2', arrival: 1, burst: 3 },
-  { id: 'P3', arrival: 2, burst: 8 },
+  { id: 'P1', arrival: 0, burst: 6, priority: 3 },
+  { id: 'P2', arrival: 1, burst: 3, priority: 1 },
+  { id: 'P3', arrival: 2, burst: 8, priority: 4 },
 ];
 let lastSimulation = null;
 let compareHistory = [];
@@ -88,7 +89,7 @@ let lastComparisonRows = [];
 let lastRrSweepRows = [];
 
 function serializeWorkload(processList) {
-  return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}`).join(';');
+  return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}:${process.priority ?? 3}`).join(';');
 }
 
 function parseSharedWorkload(raw) {
@@ -99,11 +100,12 @@ function parseSharedWorkload(raw) {
     .map((row) => row.trim())
     .filter(Boolean)
     .map((row) => {
-      const [id, arrival, burst] = row.split(':');
+      const [id, arrival, burst, priority] = row.split(':');
       return {
         id: (id || '').trim().toUpperCase(),
         arrival: Number.parseInt(arrival, 10),
         burst: Number.parseInt(burst, 10),
+        priority: Number.parseInt(priority || '3', 10),
       };
     });
 
@@ -217,6 +219,20 @@ function renderProcessTable() {
     });
     burstCell.appendChild(burstInput);
 
+    const priorityCell = document.createElement('td');
+    const priorityInput = document.createElement('input');
+    priorityInput.type = 'number';
+    priorityInput.min = '1';
+    priorityInput.max = '9';
+    priorityInput.step = '1';
+    priorityInput.value = process.priority ?? 3;
+    priorityInput.addEventListener('input', (event) => {
+      processes[index].priority = Number.parseInt(event.target.value, 10);
+      renderWorkloadFingerprint();
+      syncUrlState();
+    });
+    priorityCell.appendChild(priorityInput);
+
     const removeCell = document.createElement('td');
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
@@ -229,7 +245,7 @@ function renderProcessTable() {
     });
     removeCell.appendChild(removeButton);
 
-    row.append(idCell, arrivalCell, burstCell, removeCell);
+    row.append(idCell, arrivalCell, burstCell, priorityCell, removeCell);
     processBody.appendChild(row);
   });
 
@@ -242,6 +258,7 @@ function renderWorkloadFingerprint() {
 
   const arrivals = processes.map((process) => Number(process.arrival)).filter(Number.isFinite);
   const bursts = processes.map((process) => Number(process.burst)).filter(Number.isFinite);
+  const priorities = processes.map((process) => Number(process.priority ?? 3)).filter(Number.isFinite);
   if (!arrivals.length || !bursts.length) {
     workloadArrivalSpanEl.textContent = '-';
     workloadBurstMixEl.textContent = '-';
@@ -256,6 +273,7 @@ function renderWorkloadFingerprint() {
   const shortestBurst = Math.min(...bursts);
   const shortJobs = bursts.filter((burst) => burst <= Math.max(2, avgBurst * 0.6)).length;
   const shortShare = (shortJobs / bursts.length) * 100;
+  const prioritySpread = priorities.length ? Math.max(...priorities) - Math.min(...priorities) : 0;
 
   workloadArrivalSpanEl.textContent = `${arrivalSpan} time`;
   workloadBurstMixEl.textContent = `${shortestBurst}-${longestBurst} burst`;
@@ -266,6 +284,8 @@ function renderWorkloadFingerprint() {
     summary = 'This looks convoy-prone: FCFS will amplify the long job, while SJF should cut average waiting.';
   } else if (shortShare >= 50 && arrivalSpan > 0) {
     summary = 'Short jobs arrive throughout the trace, so SRTF should respond best if preemption cost is acceptable.';
+  } else if (prioritySpread >= 3) {
+    summary = 'Priority spread is meaningful here, so Priority with Aging is worth comparing against the pure burst-time policies.';
   } else if (shortShare <= 25 && longestBurst - shortestBurst <= 2) {
     summary = 'Burst sizes are tightly clustered, so Round Robin can trade a little overhead for fairness without much pain.';
   }
@@ -321,6 +341,7 @@ function validateProcesses() {
     id: (process.id || `P${index + 1}`).trim().toUpperCase(),
     arrival: Number(process.arrival),
     burst: Number(process.burst),
+    priority: Number(process.priority ?? 3),
   }));
 
   for (const process of sanitized) {
@@ -338,6 +359,9 @@ function validateProcesses() {
 
     if (!Number.isInteger(process.burst) || process.burst <= 0) {
       return { ok: false, message: `Burst time for ${process.id} must be an integer > 0.` };
+    }
+    if (!Number.isInteger(process.priority) || process.priority < 1) {
+      return { ok: false, message: `Priority for ${process.id} must be an integer >= 1.` };
     }
   }
 
@@ -492,6 +516,48 @@ function simulateHRRN(baseProcesses) {
       const aRatio = (time - a.arrival + a.burst) / a.burst;
       const bRatio = (time - b.arrival + b.burst) / b.burst;
       if (aRatio !== bRatio) return bRatio - aRatio;
+      return compareByArrivalThenId(a, b);
+    });
+
+    const process = ready.shift();
+    firstStartTimes[process.id] = time;
+    const end = time + process.burst;
+    pushSegment(timeline, process.id, time, end);
+    completionTimes[process.id] = end;
+    time = end;
+  }
+
+  return { timeline, completionTimes, firstStartTimes };
+}
+
+function simulatePriorityWithAging(baseProcesses) {
+  const pending = [...baseProcesses].sort(compareByArrivalThenId);
+  const ready = [];
+  const timeline = [];
+  const completionTimes = {};
+  const firstStartTimes = {};
+  let time = 0;
+
+  while (pending.length || ready.length) {
+    while (pending.length && pending[0].arrival <= time) {
+      ready.push(pending.shift());
+    }
+
+    if (!ready.length) {
+      const nextArrival = pending[0].arrival;
+      pushSegment(timeline, 'IDLE', time, nextArrival);
+      time = nextArrival;
+      continue;
+    }
+
+    ready.sort((a, b) => {
+      const aWait = Math.max(0, time - a.arrival);
+      const bWait = Math.max(0, time - b.arrival);
+      const aEffective = Math.max(1, a.priority - Math.floor(aWait / 3));
+      const bEffective = Math.max(1, b.priority - Math.floor(bWait / 3));
+      if (aEffective !== bEffective) return aEffective - bEffective;
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      if (a.burst !== b.burst) return a.burst - b.burst;
       return compareByArrivalThenId(a, b);
     });
 
@@ -1326,6 +1392,8 @@ function runSimulation() {
       return;
     }
     result = simulateRR(validation.processes, quantum);
+  } else if (selectedAlgorithm === 'PRI') {
+    result = simulatePriorityWithAging(validation.processes);
   } else if (selectedAlgorithm === 'SJF') {
     result = simulateSJF(validation.processes);
   } else if (selectedAlgorithm === 'HRRN') {
@@ -1365,6 +1433,8 @@ function runAlgorithmForComparison(processList, algorithm, quantum, contextSwitc
 
   if (algorithm === 'RR') {
     result = simulateRR(processList, quantum);
+  } else if (algorithm === 'PRI') {
+    result = simulatePriorityWithAging(processList);
   } else if (algorithm === 'SJF') {
     result = simulateSJF(processList);
   } else if (algorithm === 'HRRN') {
@@ -1403,7 +1473,7 @@ function compareAllAlgorithms() {
     return;
   }
 
-  const algorithms = ['FCFS', 'SJF', 'HRRN', 'SRTF', 'RR'];
+  const algorithms = ['FCFS', 'SJF', 'HRRN', 'PRI', 'SRTF', 'RR'];
   const rows = algorithms.map((algorithm) => ({
     algorithm,
     metrics: runAlgorithmForComparison(validation.processes, algorithm, quantum, contextSwitchCost),
@@ -1652,6 +1722,7 @@ function generateRandomWorkload() {
     id: `P${index + 1}`,
     arrival: Math.floor(Math.random() * 8),
     burst: 1 + Math.floor(Math.random() * 9),
+    priority: 1 + Math.floor(Math.random() * 5),
   }));
 
   processes.sort(compareByArrivalThenId);
@@ -1663,21 +1734,21 @@ function generateRandomWorkload() {
 function loadPresetWorkload(type) {
   if (type === 'convoy') {
     processes = [
-      { id: 'P1', arrival: 0, burst: 14 },
-      { id: 'P2', arrival: 1, burst: 2 },
-      { id: 'P3', arrival: 2, burst: 1 },
-      { id: 'P4', arrival: 3, burst: 2 },
+      { id: 'P1', arrival: 0, burst: 14, priority: 4 },
+      { id: 'P2', arrival: 1, burst: 2, priority: 2 },
+      { id: 'P3', arrival: 2, burst: 1, priority: 1 },
+      { id: 'P4', arrival: 3, burst: 2, priority: 2 },
     ];
     algorithmSelect.value = 'FCFS';
     contextSwitchInput.value = '0';
     errorText.textContent = 'Loaded convoy-effect preset. Compare FCFS against SJF or RR.';
   } else if (type === 'interactive') {
     processes = [
-      { id: 'P1', arrival: 0, burst: 6 },
-      { id: 'P2', arrival: 1, burst: 2 },
-      { id: 'P3', arrival: 2, burst: 1 },
-      { id: 'P4', arrival: 4, burst: 3 },
-      { id: 'P5', arrival: 6, burst: 2 },
+      { id: 'P1', arrival: 0, burst: 6, priority: 4 },
+      { id: 'P2', arrival: 1, burst: 2, priority: 1 },
+      { id: 'P3', arrival: 2, burst: 1, priority: 1 },
+      { id: 'P4', arrival: 4, burst: 3, priority: 2 },
+      { id: 'P5', arrival: 6, burst: 2, priority: 2 },
     ];
     algorithmSelect.value = 'RR';
     quantumInput.value = '2';
@@ -1685,24 +1756,24 @@ function loadPresetWorkload(type) {
     errorText.textContent = 'Loaded interactive preset. Round Robin now shows context-switch tradeoffs.';
   } else if (type === 'starvation') {
     processes = [
-      { id: 'P1', arrival: 0, burst: 18 },
-      { id: 'P2', arrival: 1, burst: 2 },
-      { id: 'P3', arrival: 2, burst: 2 },
-      { id: 'P4', arrival: 3, burst: 1 },
-      { id: 'P5', arrival: 5, burst: 2 },
-      { id: 'P6', arrival: 7, burst: 1 },
+      { id: 'P1', arrival: 0, burst: 18, priority: 5 },
+      { id: 'P2', arrival: 1, burst: 2, priority: 1 },
+      { id: 'P3', arrival: 2, burst: 2, priority: 1 },
+      { id: 'P4', arrival: 3, burst: 1, priority: 1 },
+      { id: 'P5', arrival: 5, burst: 2, priority: 2 },
+      { id: 'P6', arrival: 7, burst: 1, priority: 2 },
     ];
     algorithmSelect.value = 'SJF';
     contextSwitchInput.value = '0';
     errorText.textContent = 'Loaded starvation-watch preset. Compare SJF, SRTF, and RR to see who protects late short jobs without trapping the long runner.';
   } else {
     processes = [
-      { id: 'P1', arrival: 0, burst: 5 },
-      { id: 'P2', arrival: 0, burst: 2 },
-      { id: 'P3', arrival: 1, burst: 1 },
-      { id: 'P4', arrival: 2, burst: 7 },
-      { id: 'P5', arrival: 3, burst: 2 },
-      { id: 'P6', arrival: 4, burst: 1 },
+      { id: 'P1', arrival: 0, burst: 5, priority: 4 },
+      { id: 'P2', arrival: 0, burst: 2, priority: 1 },
+      { id: 'P3', arrival: 1, burst: 1, priority: 1 },
+      { id: 'P4', arrival: 2, burst: 7, priority: 5 },
+      { id: 'P5', arrival: 3, burst: 2, priority: 2 },
+      { id: 'P6', arrival: 4, burst: 1, priority: 1 },
     ];
     algorithmSelect.value = 'SRTF';
     contextSwitchInput.value = '1';
@@ -1741,7 +1812,7 @@ function importWorkload(event) {
   reader.onload = () => {
     try {
       const parsed = JSON.parse(String(reader.result || '{}'));
-      processes = Array.isArray(parsed.processes) ? parsed.processes : [];
+      processes = Array.isArray(parsed.processes) ? parsed.processes.map((process) => ({ ...process, priority: Number(process.priority ?? 3) })) : [];
       algorithmSelect.value = parsed.algorithm || 'FCFS';
       quantumInput.value = parsed.quantum || '2';
       contextSwitchInput.value = parsed.contextSwitchCost || '0';
@@ -1779,6 +1850,7 @@ function importWorkloadCsv(event) {
       const idIndex = headers.indexOf('pid');
       const arrivalIndex = headers.indexOf('arrival');
       const burstIndex = headers.indexOf('burst');
+      const priorityIndex = headers.indexOf('priority');
 
       if (idIndex === -1 || arrivalIndex === -1 || burstIndex === -1) {
         throw new Error('CSV headers must include pid, arrival, and burst.');
@@ -1790,8 +1862,9 @@ function importWorkloadCsv(event) {
           id: cells[idIndex] || `P${index + 1}`,
           arrival: Number(cells[arrivalIndex]),
           burst: Number(cells[burstIndex]),
+          priority: priorityIndex === -1 ? 3 : Number(cells[priorityIndex]),
         };
-      }).filter((row) => Number.isFinite(row.arrival) && Number.isFinite(row.burst) && row.burst > 0);
+      }).filter((row) => Number.isFinite(row.arrival) && Number.isFinite(row.burst) && row.burst > 0 && Number.isFinite(row.priority) && row.priority >= 1);
 
       if (!processes.length) {
         throw new Error('No valid process rows were found in the CSV.');
@@ -1817,7 +1890,7 @@ function isEditableTarget(target) {
 }
 
 addProcessBtn.addEventListener('click', () => {
-  processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
+  processes.push({ id: getNextProcessId(), arrival: 0, burst: 1, priority: 3 });
   renderProcessTable();
 });
 
@@ -1888,7 +1961,7 @@ document.addEventListener('keydown', (event) => {
 
   if (key === 'a') {
     event.preventDefault();
-    processes.push({ id: getNextProcessId(), arrival: 0, burst: 1 });
+    processes.push({ id: getNextProcessId(), arrival: 0, burst: 1, priority: 3 });
     renderProcessTable();
     errorText.textContent = 'Added a new process row.';
     return;

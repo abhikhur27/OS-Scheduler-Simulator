@@ -9,8 +9,10 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
   - First Come, First Served (FCFS)
   - Shortest Job First (SJF, non-preemptive)
   - Highest Response Ratio Next (HRRN, non-preemptive)
+  - Priority with Aging (non-preemptive)
   - Shortest Remaining Time First (SRTF, preemptive)
   - Round Robin (configurable quantum)
+- Process rows now carry an explicit priority column so priority-aware workloads can be compared honestly instead of being implied by burst time.
 - Timeline (Gantt chart) with idle segments included.
 - Inspectable Gantt timeline so each process slice, idle gap, and context-switch segment can be read directly without guessing from color alone.
 - Workload import/export as JSON for reproducible comparisons.
@@ -106,7 +108,8 @@ Then open `http://localhost:8000`.
 
 1. Load the `Starvation Watch Preset`.
 2. Run the current scheduler, then use `Compare All`.
-3. Sweep Round Robin quantums to show fairness versus overhead.
+3. Switch to `Priority with Aging` on a mixed-priority workload to show urgent service without indefinite starvation.
+4. Sweep Round Robin quantums to show fairness versus overhead.
 4. Copy the decision brief for a reproducible scheduler recommendation.
 5. Read the tail-risk board so the demo names who actually paid for the average metric.
 
