@@ -113,6 +113,38 @@ function parseSharedWorkload(raw) {
   return parsed;
 }
 
+function parseCsvRow(line) {
+  const cells = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      cells.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current.trim());
+  return cells;
+}
+
 function syncUrlState() {
   const params = new URLSearchParams(window.location.search);
   params.set('algorithm', algorithmSelect.value);
@@ -1818,6 +1850,7 @@ function importWorkload(event) {
       contextSwitchInput.value = parsed.contextSwitchCost || '0';
       renderProcessTable();
       updateQuantumVisibility();
+      syncUrlState();
       runSimulation();
       errorText.textContent = 'Imported workload JSON.';
     } catch (error) {
@@ -1846,7 +1879,7 @@ function importWorkloadCsv(event) {
         throw new Error('CSV needs a header row plus at least one process row.');
       }
 
-      const headers = lines[0].split(',').map((value) => value.trim().toLowerCase());
+      const headers = parseCsvRow(lines[0]).map((value) => value.trim().toLowerCase());
       const idIndex = headers.indexOf('pid');
       const arrivalIndex = headers.indexOf('arrival');
       const burstIndex = headers.indexOf('burst');
@@ -1857,7 +1890,7 @@ function importWorkloadCsv(event) {
       }
 
       processes = lines.slice(1).map((line, index) => {
-        const cells = line.split(',').map((value) => value.trim());
+        const cells = parseCsvRow(line);
         return {
           id: cells[idIndex] || `P${index + 1}`,
           arrival: Number(cells[arrivalIndex]),
@@ -1872,6 +1905,8 @@ function importWorkloadCsv(event) {
 
       processes.sort(compareByArrivalThenId);
       renderProcessTable();
+      updateQuantumVisibility();
+      syncUrlState();
       runSimulation();
       errorText.textContent = 'Imported workload CSV.';
     } catch (error) {
