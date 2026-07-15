@@ -6,6 +6,8 @@ const exportCsvButton = document.getElementById('export-csv');
 const compareAllButton = document.getElementById('compare-all');
 const copyCompareBriefButton = document.getElementById('copy-compare-brief');
 const exportCompareTapeButton = document.getElementById('export-compare-tape');
+const importCompareTapeButton = document.getElementById('import-compare-tape');
+const importCompareTapeFile = document.getElementById('import-compare-tape-file');
 const sweepRrButton = document.getElementById('sweep-rr');
 const applyBestRrButton = document.getElementById('apply-best-rr');
 const comparisonBody = document.getElementById('comparison-body');
@@ -87,6 +89,32 @@ let lastSimulation = null;
 let compareHistory = [];
 let lastComparisonRows = [];
 let lastRrSweepRows = [];
+
+function renderCompareTapeState() {
+  if (comparisonBody) {
+    comparisonBody.innerHTML = lastComparisonRows.length
+      ? lastComparisonRows
+        .map(
+          ({ algorithm, metrics }) => `
+            <tr>
+              <td>${algorithm}</td>
+              <td>${metrics.averages.waiting.toFixed(2)}</td>
+              <td>${metrics.averages.response.toFixed(2)}</td>
+              <td>${metrics.averages.turnaround.toFixed(2)}</td>
+              <td>${metrics.utilization.toFixed(1)}%</td>
+            </tr>
+          `
+        )
+        .join('')
+      : '<tr><td colspan="5" class="empty">Use Compare Workload to benchmark the current process table.</td></tr>';
+  }
+
+  if (compareHistoryEl) {
+    compareHistoryEl.innerHTML = compareHistory.length
+      ? compareHistory.map((entry) => `<p>${entry}</p>`).join('')
+      : 'Run Compare Workload to keep a short session tape of scheduler winners.';
+  }
+}
 
 function serializeWorkload(processList) {
   return processList.map((process) => `${process.id}:${process.arrival}:${process.burst}:${process.priority ?? 3}`).join(';');
@@ -1514,27 +1542,11 @@ function compareAllAlgorithms() {
   rows.sort((a, b) => a.metrics.averages.waiting - b.metrics.averages.waiting);
   lastComparisonRows = rows.map((row) => ({ algorithm: row.algorithm, metrics: row.metrics }));
 
-  comparisonBody.innerHTML = rows
-    .map(
-      ({ algorithm, metrics }) => `
-        <tr>
-          <td>${algorithm}</td>
-          <td>${metrics.averages.waiting.toFixed(2)}</td>
-          <td>${metrics.averages.response.toFixed(2)}</td>
-          <td>${metrics.averages.turnaround.toFixed(2)}</td>
-          <td>${metrics.utilization.toFixed(1)}%</td>
-        </tr>
-      `
-    )
-    .join('');
-
   compareHistory = [
     `${rows[0].algorithm} won this ${validation.processes.length}-process workload; ${rows[rows.length - 1].algorithm} trailed on average wait.`,
     ...compareHistory,
   ].slice(0, 4);
-  if (compareHistoryEl) {
-    compareHistoryEl.innerHTML = compareHistory.map((entry) => `<p>${entry}</p>`).join('');
-  }
+  renderCompareTapeState();
 
   errorText.textContent = `${rows[0].algorithm} currently has the best average waiting time on this workload.`;
   noteEl.textContent = buildComparisonSummary(rows, contextSwitchCost);
@@ -1717,6 +1729,78 @@ function exportCompareTape() {
   link.click();
   URL.revokeObjectURL(url);
   errorText.textContent = 'Exported compare tape with the latest workload comparison and session history.';
+}
+
+function normalizeComparisonTapeRow(row) {
+  if (!row || typeof row.algorithm !== 'string' || !row.metrics || typeof row.metrics !== 'object') {
+    return null;
+  }
+
+  const waiting = Number(row.metrics?.averages?.waiting);
+  const response = Number(row.metrics?.averages?.response);
+  const turnaround = Number(row.metrics?.averages?.turnaround);
+  const utilization = Number(row.metrics?.utilization);
+  if (![waiting, response, turnaround, utilization].every(Number.isFinite)) {
+    return null;
+  }
+
+  return row;
+}
+
+function importCompareTape(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || '{}'));
+      const importedRows = Array.isArray(parsed.latestComparison)
+        ? parsed.latestComparison.map(normalizeComparisonTapeRow).filter(Boolean)
+        : [];
+      const importedHistory = Array.isArray(parsed.compareHistory)
+        ? parsed.compareHistory.filter((entry) => typeof entry === 'string').slice(0, 4)
+        : [];
+      const importedProcesses = Array.isArray(parsed.workload)
+        ? parsed.workload
+          .map((process) => ({
+            id: String(process?.id || '').trim().toUpperCase(),
+            arrival: Number(process?.arrival),
+            burst: Number(process?.burst),
+            priority: Number(process?.priority ?? 3),
+          }))
+          .filter((process) => process.id && Number.isFinite(process.arrival) && Number.isFinite(process.burst) && process.burst > 0 && Number.isFinite(process.priority))
+        : [];
+
+      if (!importedRows.length && !importedHistory.length) {
+        throw new Error('No compare tape rows or history were found in that file.');
+      }
+
+      if (importedProcesses.length) {
+        processes = importedProcesses.sort(compareByArrivalThenId);
+        renderProcessTable();
+        runSimulation();
+      }
+
+      lastComparisonRows = importedRows;
+      compareHistory = importedHistory;
+      renderCompareTapeState();
+
+      if (importedRows.length) {
+        noteEl.textContent = `Imported compare tape with ${importedRows.length} ranked algorithms.`;
+      }
+
+      errorText.textContent = importedProcesses.length
+        ? `Imported compare tape with ${importedRows.length} ranked algorithms and reopened the saved workload.`
+        : `Imported compare tape history with ${importedHistory.length} note${importedHistory.length === 1 ? '' : 's'}.`;
+    } catch (error) {
+      errorText.textContent = error.message || 'Could not import that compare tape JSON.';
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  reader.readAsText(file);
 }
 
 function buildDecisionBrief() {
@@ -1969,6 +2053,8 @@ copyCompareBriefButton?.addEventListener('click', async () => {
   }
 });
 exportCompareTapeButton?.addEventListener('click', exportCompareTape);
+importCompareTapeButton?.addEventListener('click', () => importCompareTapeFile?.click());
+importCompareTapeFile?.addEventListener('change', importCompareTape);
 importWorkloadBtn.addEventListener('click', () => importWorkloadFile.click());
 importWorkloadFile.addEventListener('change', importWorkload);
 importWorkloadCsvBtn.addEventListener('click', () => importWorkloadCsvFile.click());
