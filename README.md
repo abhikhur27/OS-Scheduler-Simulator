@@ -20,6 +20,7 @@ Interactive CPU scheduling simulator focused on correctness, algorithm compariso
 - Compare-tape import now restores exported benchmark rankings and can reopen the saved workload for later scheduler review.
 - Copy Decision Brief turns the current workload fingerprint, tuned scheduler choice, and per-process outcome summary into a clipboard-ready note.
 - Compare-all benchmark table across FCFS, SJF, SRTF, and RR for the same workload.
+- Compare-all benchmark table can now be exported directly as CSV when the ranking needs to move into notes, lab reports, or spreadsheet review.
 - Keyboard shortcut `C` now runs a compare-all benchmark for the current workload.
 - Apply Best Quantum takes the latest Round Robin sweep and immediately reruns the workload with the lowest-wait quantum.
 - Added a starvation-watch workload preset for contrasting long-running jobs against steady short arrivals.

@@ -5,6 +5,7 @@ const runButton = document.getElementById('run-sim');
 const exportCsvButton = document.getElementById('export-csv');
 const compareAllButton = document.getElementById('compare-all');
 const copyCompareBriefButton = document.getElementById('copy-compare-brief');
+const exportCompareCsvButton = document.getElementById('export-compare-csv');
 const exportCompareTapeButton = document.getElementById('export-compare-tape');
 const importCompareTapeButton = document.getElementById('import-compare-tape');
 const importCompareTapeFile = document.getElementById('import-compare-tape-file');
@@ -1731,6 +1732,40 @@ function exportCompareTape() {
   errorText.textContent = 'Exported compare tape with the latest workload comparison and session history.';
 }
 
+function exportCompareCsv() {
+  if (!lastComparisonRows.length) {
+    errorText.textContent = 'Run Compare Workload before exporting the comparison table.';
+    return;
+  }
+
+  const lines = [
+    'rank,algorithm,avgWait,avgResponse,avgTurnaround,utilizationPct,longestWait,fairnessSpread,maxSlowdown',
+    ...lastComparisonRows.map(
+      (row, index) =>
+        [
+          index + 1,
+          row.algorithm,
+          row.metrics.averages.waiting.toFixed(3),
+          row.metrics.averages.response.toFixed(3),
+          row.metrics.averages.turnaround.toFixed(3),
+          row.metrics.utilization.toFixed(3),
+          row.metrics.longestWait.toFixed(3),
+          row.metrics.fairnessSpread.toFixed(3),
+          row.metrics.maxSlowdown.toFixed(3),
+        ].join(',')
+    ),
+  ];
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'cpu-scheduling-compare.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+  errorText.textContent = 'Exported compare-all CSV.';
+}
+
 function normalizeComparisonTapeRow(row) {
   if (!row || typeof row.algorithm !== 'string' || !row.metrics || typeof row.metrics !== 'object') {
     return null;
@@ -2052,6 +2087,7 @@ copyCompareBriefButton?.addEventListener('click', async () => {
     errorText.textContent = 'Clipboard copy failed in this environment.';
   }
 });
+exportCompareCsvButton?.addEventListener('click', exportCompareCsv);
 exportCompareTapeButton?.addEventListener('click', exportCompareTape);
 importCompareTapeButton?.addEventListener('click', () => importCompareTapeFile?.click());
 importCompareTapeFile?.addEventListener('change', importCompareTape);
